@@ -19,7 +19,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Log the form submission in the database using Supabase
   const { error: dbError } = await supabase
     .from('form_submissions')
     .insert([{ name, phone, message, workspace_id }]);
