@@ -19,6 +19,8 @@ import Pricing from "./components/Pricing";
 import Testimonials from "./components/Testimonials";
 import FAQ from "./components/FAQ";
 import Footer from "./components/Footer";
+import FeatureCloudCallCenter from "./components/FeatureCloudCallCenter";
+import FeatureAdIntelligence from "./components/FeatureAdIntelligence";
 
 export default function Home() {
   return (
@@ -134,10 +136,14 @@ export default function Home() {
               Combining the best features of leading solutions with seamless integration
             </Typography>
           </Box>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 4 }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, gap: 4, mb: 4 }}>
             <FeatureCall />
             <FeatureForm />
             <FeaturePurchase />
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 4 }}>
+            <FeatureCloudCallCenter />
+            <FeatureAdIntelligence />
           </Box>
         </Box>
       </Box>
