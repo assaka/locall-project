@@ -1,14 +1,23 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress } from '@mui/material';
 import CallIcon from '@mui/icons-material/Call';
 
 const CallPage: React.FC = () => {
+  const searchParams = useSearchParams();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fromNumber = searchParams.get("from");
+    if (fromNumber) {
+      setFrom(fromNumber);
+    }
+  }, [searchParams]);
 
   const handleCall = async (e: React.FormEvent) => {
     e.preventDefault();

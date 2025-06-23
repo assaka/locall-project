@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import Link from "next/link";
 import { Box, Typography, Card, Button, TextField, List, ListItem, Alert, Stack, CircularProgress } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
 
@@ -10,12 +11,14 @@ const PurchasePage: React.FC = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [purchasedNumber, setPurchasedNumber] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage("");
     setError("");
     setNumbers([]);
+    setPurchasedNumber(null);
     setLoading(true);
     const res = await fetch("/api/twilio-purchase", {
       method: "POST",
@@ -24,8 +27,11 @@ const PurchasePage: React.FC = () => {
     });
     const data = await res.json();
     setLoading(false);
-    if (data.numbers) setNumbers(data.numbers);
-    else setError(data.error || "No numbers found");
+    if (data.numbers && data.numbers.length > 0) {
+      setNumbers(data.numbers);
+    } else {
+      setError(data.error || "No available numbers found for that area code. Please try a different one.");
+    }
   };
 
   const handleBuy = async (number: string) => {
@@ -39,8 +45,11 @@ const PurchasePage: React.FC = () => {
     });
     const data = await res.json();
     setBuying(null);
-    if (data.purchased) setMessage(`Purchased: ${data.purchased.phoneNumber}`);
-    else setError(data.error || "Purchase failed");
+    if (data.purchased) {
+      setMessage(`Purchased: ${data.purchased.phoneNumber}`);
+      setPurchasedNumber(data.purchased.phoneNumber);
+      setNumbers([]);
+    } else setError(data.error || "Purchase failed");
   };
 
   return (
@@ -57,7 +66,7 @@ const PurchasePage: React.FC = () => {
               onChange={e => setAreaCode(e.target.value)}
               inputProps={{ maxLength: 3 }}
               required
-              placeholder="e.g. 415"
+              placeholder="e.g. 1"
               size="small"
               sx={{ width: 120 }}
             />
@@ -88,7 +97,28 @@ const PurchasePage: React.FC = () => {
           </List>
         </Card>
       )}
-      {message && <Alert severity="success" sx={{ mb: 2 }}>{message}</Alert>}
+      {message && (
+        <Alert
+          severity="success"
+          sx={{ mb: 2 }}
+          action={
+            purchasedNumber && (
+              <Button
+                component={Link}
+                href={`/call?from=${encodeURIComponent(purchasedNumber)}`}
+                color="inherit"
+                size="small"
+                variant="outlined"
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                Make a Call
+              </Button>
+            )
+          }
+        >
+          {message}
+        </Alert>
+      )}
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
     </Box>
   );
