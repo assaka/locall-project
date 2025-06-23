@@ -17,6 +17,7 @@ import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 const features = [
   "Field-level tracking",
@@ -107,8 +108,17 @@ export default function FeatureForm() {
             />
             {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
             {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-            <Box mt={2}>
-              <Button href="/form" component="a" size="small" color="primary" sx={{ textTransform: 'none' }}>
+            <Box mt={3} mb={1}>
+              <Box sx={{ borderTop: '1px solid #e0e0e0', my: 2 }} />
+              <Button
+                href="/form"
+                component="a"
+                fullWidth
+                variant="outlined"
+                color="primary"
+                startIcon={<SettingsIcon />}
+                sx={{ borderRadius: 2, fontWeight: 600, py: 1.2, fontSize: 16 }}
+              >
                 Advanced: Name, Phone, Message & More Options
               </Button>
             </Box>

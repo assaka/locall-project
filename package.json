@@ -13,6 +13,8 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
+    "@mui/system": "^7.1.1",
+    "@mui/types": "^7.4.3",
     "@prisma/client": "^6.10.1",
     "@supabase/supabase-js": "^2.50.0",
     "next": "15.3.4",

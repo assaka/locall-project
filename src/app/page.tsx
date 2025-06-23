@@ -37,6 +37,7 @@ export default function Home() {
             <Button component={Link} href="#pricing" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Pricing</Button>
             <Button component={Link} href="#integrations" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Integrations</Button>
             <Button component={Link} href="#resources" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Resources</Button>
+            <Button component={Link} href="/dashboard" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 2, textTransform: "none" }}>Dashboard</Button>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 180, justifyContent: "flex-end" }}>
             <Button component={Link} href="#" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Login</Button>

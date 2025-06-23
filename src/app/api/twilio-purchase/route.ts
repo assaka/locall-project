@@ -12,8 +12,6 @@ if (!accountSid || !authToken) {
 
 const client = twilio(accountSid, authToken);
 
-console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID);
-
 export async function POST(request: Request) {
   const body = await request.json();
   const { search, buy, workspace_id } = body;

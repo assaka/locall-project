@@ -3,7 +3,10 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 
-const productLinks = ["Features", "Pricing", "Integrations", "Updates", "Roadmap"];
+const productLinks = [
+  { label: "Dashboard", href: "/dashboard" },
+  ...["Features", "Pricing", "Integrations", "Updates", "Roadmap"].map(l => ({ label: l, href: "#" }))
+];
 const resourceLinks = ["Blog", "Guides", "Help Center", "API Docs", "Webinars"];
 const companyLinks = ["About Us", "Careers", "Contact", "Press", "Partners"];
 const policyLinks = ["Privacy Policy", "Terms of Service", "Cookie Policy"];
@@ -29,7 +32,7 @@ export default function Footer() {
           </Box>
           <Box flex={1}>
             <Typography fontWeight={700} mb={2}>Product</Typography>
-            <Stack spacing={1}>{productLinks.map((l) => <Box key={l} component="a" href="#" sx={{ color: "grey.400", fontSize: 15, '&:hover': { color: "#fff" } }}>{l}</Box>)}</Stack>
+            <Stack spacing={1}>{productLinks.map((l) => <Box key={l.label} component="a" href={l.href} sx={{ color: "grey.400", fontSize: 15, '&:hover': { color: "#fff" } }}>{l.label}</Box>)}</Stack>
           </Box>
           <Box flex={1}>
             <Typography fontWeight={700} mb={2}>Resources</Typography>
