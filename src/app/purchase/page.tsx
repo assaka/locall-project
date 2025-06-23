@@ -136,4 +136,4 @@ const PurchasePage: React.FC = () => {
   );
 };
 
-export default PurchasePage; 
+export default PurchasePage;

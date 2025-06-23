@@ -50,4 +50,4 @@ const CTASection = () => (
   </Box>
 );
 
-export default CTASection; 
+export default CTASection;

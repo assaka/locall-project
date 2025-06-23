@@ -26,14 +26,11 @@ import CTASection from "./components/CTASection";
 export default function Home() {
   return (
     <>
-      {/* Custom Navbar */}
       <Box sx={{ width: "100%", bgcolor: "white", borderBottom: "1px solid #eee", py: 3, px: { xs: 2, md: 4 }, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <Box sx={{ width: "100%", maxWidth: "85%", display: "flex", alignItems: "center", justifyContent: "space-between", height: 72 }}>
-          {/* Logo */}
           <Typography variant="h5" fontWeight={700} color="primary" sx={{ display: "flex", alignItems: "center", minWidth: 120 }}>
             LoCall
           </Typography>
-          {/* Menu */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 4, mx: "auto" }}>
             <Button component={Link} href="#features" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Features</Button>
             <Button component={Link} href="#usecases" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Use Cases</Button>
@@ -50,7 +47,6 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Hero Section */}
       <Box sx={{ position: "relative", bgcolor: "primary.main", color: "#fff", py: { xs: 8, md: 16 }, overflow: "hidden" }}>
         <Box sx={{ maxWidth: 1200, mx: "auto", px: 2, position: "relative", zIndex: 2 }}>
           <Stack direction={{ xs: "column", md: "row" }} spacing={8} alignItems="center" justifyContent="space-between">
@@ -95,11 +91,9 @@ export default function Home() {
             </Box>
           </Stack>
         </Box>
-        {/* Decorative gradient at the bottom */}
         <Box sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 64, background: "linear-gradient(to top, #fff, transparent)" }} />
       </Box>
 
-      {/* Logo Cloud */}
       <Box sx={{ py: 6, bgcolor: "white" }}>
         <Box sx={{ maxWidth: 1200, mx: "auto", px: 2 }}>
           <Typography align="center" color="text.secondary" sx={{ textTransform: "uppercase", fontWeight: 600, letterSpacing: 2, mb: 3, fontSize: 14 }}>
@@ -124,7 +118,6 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* Features Section */}
       <Box id="features" sx={{ py: { xs: 8, md: 10 }, bgcolor: "grey.50" }}>
         <Box sx={{ maxWidth: 1200, mx: "auto", px: 2 }}>
           <Box textAlign="center" mb={6}>
@@ -150,30 +143,21 @@ export default function Home() {
         </Box>
       </Box>
 
-      {/* How It Works Section */}
       <HowItWorks />
 
-      {/* Integrations Section */}
       <Integrations />
 
-      {/* Use Cases Section */}
       <UseCases />
 
-      {/* Pricing Section */}
       <Pricing />
 
-      {/* Testimonials Section */}
       <Testimonials />
 
-      {/* FAQ Section */}
+      <CTASection />
+
       <FAQ />
 
-      {/* Footer Section */}
       <Footer />
-
-      {/* Features, How It Works, Integrations, Use Cases, Pricing, Testimonials, FAQ, Footer */}
-      {/* ... (For brevity, the rest of the sections from your HTML will be converted in the same way) ... */}
-      <CTASection />
     </>
   );
 }

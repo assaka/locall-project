@@ -88,4 +88,4 @@ const FormPage: React.FC = () => {
   );
 };
 
-export default FormPage; 
+export default FormPage;

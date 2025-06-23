@@ -130,4 +130,4 @@ export default function Pricing() {
       </Box>
     </Box>
   );
-} 
+}

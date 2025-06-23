@@ -61,4 +61,4 @@ export default function FAQ() {
       </Box>
     </Box>
   );
-} 
+}
