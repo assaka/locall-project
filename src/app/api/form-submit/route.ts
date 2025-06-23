@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { supabase } from '@/app/utils/supabaseClient';
 import twilio from 'twilio';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
@@ -16,6 +17,14 @@ export async function POST(request: Request) {
 
   if (!name || !phone || !message) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+  }
+
+  const { error: dbError } = await supabase
+    .from('form_submissions')
+    .insert([{ name, phone, message }]);
+
+  if (dbError) {
+    return NextResponse.json({ error: dbError.message }, { status: 500 });
   }
 
   try {

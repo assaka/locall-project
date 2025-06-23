@@ -44,6 +44,10 @@ const PurchasePage: React.FC = () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ buy: number }),
     });
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(error);
+    }
     const data = await res.json();
     setBuying(null);
     if (data.purchased) {
