@@ -42,8 +42,23 @@ export default function HowItWorks() {
           {steps.map((step) => (
             <Card key={step.number} elevation={1} sx={{ flex: 1, borderRadius: 3, textAlign: "center", p: 3 }}>
               <CardContent>
-                <Box sx={{ bgcolor: "primary.main", color: "#fff", width: 80, height: 80, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", mx: "auto", mb: 3, fontSize: 32, fontWeight: 700, opacity: 0.1, transition: "background 0.3s" }}>
-                  <Typography variant="h4" fontWeight={700} color="primary" sx={{ opacity: 1 }}>{step.number}</Typography>
+                <Box
+                  sx={{
+                    bgcolor: "#e8f0fe",
+                    color: "#2563eb",
+                    width: 96,
+                    height: 96,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 36,
+                    fontWeight: 700,
+                    mx: "auto",
+                    mb: 3,
+                  }}
+                >
+                  {step.number}
                 </Box>
                 <Typography variant="h6" fontWeight={700} mb={1}>{step.title}</Typography>
                 <Typography color="text.secondary">{step.description}</Typography>
