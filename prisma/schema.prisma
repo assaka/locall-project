@@ -1,0 +1,82 @@
+// Prisma schema for SaaS call/form tracking backend
+// Run `npx prisma migrate dev` after editing
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(uuid())
+  email       String   @unique
+  name        String?
+  workspaces  WorkspaceMember[]
+  createdAt   DateTime @default(now())
+}
+
+model Agency {
+  id        String   @id @default(uuid())
+  name      String
+  workspaces Workspace[]
+  createdAt DateTime @default(now())
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  agencyId  String?
+  agency    Agency?  @relation(fields: [agencyId], references: [id])
+  members   WorkspaceMember[]
+  numbers   Number[]
+  calls     Call[]
+  forms     FormSubmission[]
+  createdAt DateTime @default(now())
+}
+
+model WorkspaceMember {
+  id          String   @id @default(uuid())
+  userId      String
+  workspaceId String
+  role        String   // e.g. 'owner', 'admin', 'member'
+  user        User     @relation(fields: [userId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  joinedAt    DateTime @default(now())
+}
+
+model Number {
+  id          String   @id @default(uuid())
+  phoneNumber String   @unique
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  calls       Call[]
+  createdAt   DateTime @default(now())
+}
+
+model Call {
+  id          String   @id @default(uuid())
+  from        String
+  to          String
+  status      String
+  duration    Int?
+  recordingUrl String?
+  numberId    String?
+  number      Number?  @relation(fields: [numberId], references: [id])
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FormSubmission {
+  id          String   @id @default(uuid())
+  name        String?
+  phone       String
+  message     String?
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime @default(now())
+} 

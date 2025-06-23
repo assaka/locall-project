@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
+import { supabase } from '@/app/utils/supabaseClient';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -10,6 +11,8 @@ if (!accountSid || !authToken) {
 }
 
 const client = twilio(accountSid, authToken);
+
+console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID);
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -23,6 +26,12 @@ export async function POST(request: Request) {
     if (buy) {
       try {
         const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: buy });
+        const { error: dbError } = await supabase
+          .from('numbers')
+          .insert([{ phoneNumber: buy }]);
+        if (dbError) {
+          return NextResponse.json({ error: dbError.message }, { status: 500 });
+        }
         return NextResponse.json({ purchased });
       } catch (buyError) {
         console.error('Twilio Buy Error:', buyError);
