@@ -12,7 +12,7 @@ if (!accountSid || !authToken) {
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  const { from, to } = await request.json();
+  const { from, to, workspace_id, number_id } = await request.json();
 
   try {
     const call = await client.calls.create({
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     const { error: dbError } = await supabase
       .from('calls')
-      .insert([{ from, to, status: 'initiated' }]);
+      .insert([{ from, to, status: 'initiated', workspace_id, number_id }]);
 
     if (dbError) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });
@@ -31,6 +31,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ sid: call.sid });
   } catch (error: any) {
+    console.error('Twilio Call Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

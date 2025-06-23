@@ -16,7 +16,7 @@ console.log('TWILIO_ACCOUNT_SID:', process.env.TWILIO_ACCOUNT_SID);
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { search, buy } = body;
+  const { search, buy, workspace_id } = body;
 
   try {
     if (search) {
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: buy });
         const { error: dbError } = await supabase
           .from('numbers')
-          .insert([{ phoneNumber: buy }]);
+          .insert([{ phone_number: buy, workspace_id }]);
         if (dbError) {
           return NextResponse.json({ error: dbError.message }, { status: 500 });
         }
