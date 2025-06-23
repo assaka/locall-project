@@ -66,7 +66,7 @@ const PurchasePage: React.FC = () => {
               onChange={e => setAreaCode(e.target.value)}
               inputProps={{ maxLength: 3 }}
               required
-              placeholder="e.g. 1"
+              placeholder="e.g. 815"
               size="small"
               sx={{ width: 120 }}
             />

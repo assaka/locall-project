@@ -21,8 +21,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ numbers });
     }
     if (buy) {
-      const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: buy });
-      return NextResponse.json({ purchased });
+      try {
+        const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: buy });
+        return NextResponse.json({ purchased });
+      } catch (buyError) {
+        console.error('Twilio Buy Error:', buyError);
+        return NextResponse.json({ error: (buyError as any).message || 'Failed to purchase number.' }, { status: 500 });
+      }
     }
     return NextResponse.json({ error: 'Missing search or buy parameter' }, { status: 400 });
   } catch (error: any) {
