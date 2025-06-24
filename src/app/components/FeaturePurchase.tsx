@@ -79,45 +79,9 @@ export default function FeaturePurchase() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={() => setOpen(true)}>
+        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/purchase">
           Buy Number
         </Button>
-        <Dialog open={open} onClose={() => setOpen(false)}>
-          <DialogTitle>Buy a Phone Number</DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Phone Number (E.164 format)"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              fullWidth
-              margin="normal"
-              placeholder="+1234567890"
-              disabled={loading}
-            />
-            {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-            <Box mt={3} mb={1}>
-              <Box sx={{ borderTop: '1px solid #e0e0e0', my: 2 }} />
-              <Button
-                href="/purchase"
-                component="a"
-                fullWidth
-                variant="outlined"
-                color="primary"
-                startIcon={<SearchIcon />}
-                sx={{ borderRadius: 2, fontWeight: 600, py: 1.2, fontSize: 16 }}
-              >
-                Advanced: Search by Area Code & More Options
-              </Button>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-            <Button onClick={handleBuy} variant="contained" disabled={loading || !phone}>
-              {loading ? <CircularProgress size={24} /> : "Buy"}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </CardContent>
     </Card>
   );
