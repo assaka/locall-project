@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container } from '@mui/material';
+import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
 import CallIcon from '@mui/icons-material/Call';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
@@ -12,12 +12,24 @@ const CallPage: React.FC = () => {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [numbers, setNumbers] = useState<{ phoneNumber: string; friendlyName: string }[]>([]);
+  const [numbersLoading, setNumbersLoading] = useState(true);
 
   useEffect(() => {
     const fromNumber = searchParams.get("from");
     if (fromNumber) {
       setFrom(fromNumber);
     }
+    (async () => {
+      setNumbersLoading(true);
+      const res = await fetch("/api/twilio-numbers");
+      const data = await res.json();
+      if (data.numbers && data.numbers.length > 0) {
+        setNumbers(data.numbers);
+        if (!fromNumber) setFrom(data.numbers[0].phoneNumber);
+      }
+      setNumbersLoading(false);
+    })();
   }, [searchParams]);
 
   const handleCall = async (e: React.FormEvent) => {
@@ -54,15 +66,31 @@ const CallPage: React.FC = () => {
           </Typography>
           <form onSubmit={handleCall}>
             <Stack spacing={3} mb={2}>
-              <TextField
-                label="From (Twilio Number)"
-                value={from}
-                onChange={e => setFrom(e.target.value)}
-                required
-                placeholder="+1..."
-                size="medium"
-                sx={{ bgcolor: '#fff', borderRadius: 2 }}
-              />
+              {numbersLoading ? (
+                <Box display="flex" alignItems="center" justifyContent="center" minHeight={56}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <FormControl fullWidth>
+                  <InputLabel id="from-label">From (Twilio Number)</InputLabel>
+                  <Select
+                    labelId="from-label"
+                    label="From (Twilio Number)"
+                    value={from}
+                    onChange={e => setFrom(e.target.value)}
+                    required
+                    displayEmpty
+                    sx={{ bgcolor: '#fff', borderRadius: 2 }}
+                    inputProps={{ 'aria-label': 'From (Twilio Number)' }}
+                  >
+                    {numbers.map(num => (
+                      <MenuItem key={num.phoneNumber} value={num.phoneNumber}>
+                        {num.phoneNumber} {num.friendlyName ? `(${num.friendlyName})` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <TextField
                 label="To (Destination Number)"
                 value={to}

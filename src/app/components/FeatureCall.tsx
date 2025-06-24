@@ -79,45 +79,9 @@ export default function FeatureCall() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={() => setOpen(true)}>
+        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/call">
           Call Now
         </Button>
-        <Dialog open={open} onClose={() => setOpen(false)}>
-          <DialogTitle>Make a Call</DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Phone Number (E.164 format)"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              fullWidth
-              margin="normal"
-              placeholder="+1234567890"
-              disabled={loading}
-            />
-            {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-            <Box mt={3} mb={1}>
-              <Box sx={{ borderTop: '1px solid #e0e0e0', my: 2 }} />
-              <Button
-                href="/call"
-                component="a"
-                fullWidth
-                variant="outlined"
-                color="primary"
-                startIcon={<SettingsIcon />}
-                sx={{ borderRadius: 2, fontWeight: 600, py: 1.2, fontSize: 16 }}
-              >
-                Advanced: Specify From/To Number & More Options
-              </Button>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-            <Button onClick={handleCall} variant="contained" disabled={loading || !phone}>
-              {loading ? <CircularProgress size={24} /> : "Call"}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </CardContent>
     </Card>
   );

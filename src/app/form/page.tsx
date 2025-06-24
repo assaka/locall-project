@@ -1,8 +1,12 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import MenuItem from '@mui/material/MenuItem';
+import Select from '@mui/material/Select';
+import FormControl from '@mui/material/FormControl';
+import InputLabel from '@mui/material/InputLabel';
 
 const FormPage: React.FC = () => {
   const [name, setName] = useState("");
@@ -11,6 +15,22 @@ const FormPage: React.FC = () => {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [from, setFrom] = useState("");
+  const [numbers, setNumbers] = useState<{ phoneNumber: string; friendlyName: string }[]>([]);
+  const [numbersLoading, setNumbersLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setNumbersLoading(true);
+      const res = await fetch("/api/twilio-numbers");
+      const data = await res.json();
+      if (data.numbers && data.numbers.length > 0) {
+        setNumbers(data.numbers);
+        setFrom(data.numbers[0].phoneNumber);
+      }
+      setNumbersLoading(false);
+    })();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,7 +40,7 @@ const FormPage: React.FC = () => {
     const res = await fetch("/api/form-submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, message }),
+      body: JSON.stringify({ name, phone, message, from }),
     });
     const data = await res.json();
     setLoading(false);
@@ -46,6 +66,31 @@ const FormPage: React.FC = () => {
           </Typography>
           <form onSubmit={handleSubmit}>
             <Stack spacing={3} mb={2}>
+              {numbersLoading ? (
+                <Box display="flex" alignItems="center" justifyContent="center" minHeight={56}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : (
+                <FormControl fullWidth>
+                  <InputLabel id="from-label">From (Twilio Number)</InputLabel>
+                  <Select
+                    labelId="from-label"
+                    label="From (Twilio Number)"
+                    value={from}
+                    onChange={e => setFrom(e.target.value)}
+                    required
+                    displayEmpty
+                    sx={{ bgcolor: '#fff', borderRadius: 2 }}
+                    inputProps={{ 'aria-label': 'From (Twilio Number)' }}
+                  >
+                    {numbers.map(num => (
+                      <MenuItem key={num.phoneNumber} value={num.phoneNumber}>
+                        {num.phoneNumber} {num.friendlyName ? `(${num.friendlyName})` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <TextField
                 label="Name"
                 value={name}

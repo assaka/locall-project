@@ -13,7 +13,7 @@ if (!accountSid || !authToken || !twilioNumber) {
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  const { name, phone, message, workspace_id } = await request.json();
+  const { name, phone, message, workspace_id, from } = await request.json();
 
   if (!phone) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   try {
     const sms = await client.messages.create({
       body: `From ${name || 'Unknown'}: ${message || ''}`,
-      from: twilioNumber,
+      from,
       to: phone,
     });
     return NextResponse.json({ success: true, sid: sms.sid });

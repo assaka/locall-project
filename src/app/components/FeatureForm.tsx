@@ -81,55 +81,9 @@ export default function FeatureForm() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={() => setOpen(true)}>
+        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/form">
           Send Message
         </Button>
-        <Dialog open={open} onClose={() => setOpen(false)}>
-          <DialogTitle>Send Message</DialogTitle>
-          <DialogContent>
-            <TextField
-              label="Phone Number (E.164 format)"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              fullWidth
-              margin="normal"
-              placeholder="+1234567890"
-              disabled={loading}
-            />
-            <TextField
-              label="Message"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              fullWidth
-              margin="normal"
-              multiline
-              minRows={3}
-              disabled={loading}
-            />
-            {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
-            {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-            <Box mt={3} mb={1}>
-              <Box sx={{ borderTop: '1px solid #e0e0e0', my: 2 }} />
-              <Button
-                href="/form"
-                component="a"
-                fullWidth
-                variant="outlined"
-                color="primary"
-                startIcon={<SettingsIcon />}
-                sx={{ borderRadius: 2, fontWeight: 600, py: 1.2, fontSize: 16 }}
-              >
-                Advanced: Name, Phone, Message & More Options
-              </Button>
-            </Box>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpen(false)} disabled={loading}>Cancel</Button>
-            <Button onClick={handleSend} variant="contained" disabled={loading || !phone || !message}>
-              {loading ? <CircularProgress size={24} /> : "Send"}
-            </Button>
-          </DialogActions>
-        </Dialog>
       </CardContent>
     </Card>
   );
