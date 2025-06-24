@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Typography, Stack, Button } from "@mui/material";
 import BoltIcon from "@mui/icons-material/Bolt";
+import Link from "next/link";
 
 const CTASection = () => (
   <Box sx={{ bgcolor: "#2156d9", color: "#fff", py: { xs: 10, md: 14 }, textAlign: "center", position: "relative" }}>
@@ -34,6 +35,8 @@ const CTASection = () => (
           Start Free 14-Day Trial
         </Button>
         <Button
+          component={Link}
+          href="/booking"
           variant="outlined"
           color="inherit"
           size="large"

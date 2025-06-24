@@ -13,7 +13,7 @@ if (!accountSid || !authToken || !twilioNumber) {
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  const { name, phone, message, workspace_id, from } = await request.json();
+  const { name, phone, message, workspace_id, from, agency_id } = await request.json();
 
   if (!phone) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   const { error: dbError } = await supabase
     .from('form_submissions')
-    .insert([{ name, phone, message, workspace_id }]);
+    .insert([{ name, phone, message, workspace_id, agency_id }]);
 
   if (dbError) {
     return NextResponse.json({ error: dbError.message }, { status: 500 });

@@ -79,9 +79,6 @@ export default function FeaturePurchase() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/purchase">
-          Buy Number
-        </Button>
       </CardContent>
     </Card>
   );
