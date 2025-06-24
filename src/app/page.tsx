@@ -22,8 +22,43 @@ import Footer from "./components/Footer";
 import FeatureCloudCallCenter from "./components/FeatureCloudCallCenter";
 import FeatureAdIntelligence from "./components/FeatureAdIntelligence";
 import CTASection from "./components/CTASection";
+import WorkspaceMembers from "./components/WorkspaceMembers";
+import WorkspaceSettings from "./components/WorkspaceSettings";
+import { useEffect, useState } from "react";
+import { supabase } from "@/app/utils/supabaseClient";
+import { acceptPendingInvitations } from "./utils/acceptPendingInvitations";
+import UserProfile from "./components/UserProfile";
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Divider from '@mui/material/Divider';
 
 export default function Home() {
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openMenu = Boolean(anchorEl);
+
+  useEffect(() => {
+    async function fetchUserAndWorkspace() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        await acceptPendingInvitations({ id: user.id, email: user.email || "" });
+        const { data: memberships } = await supabase
+          .from("workspace_members")
+          .select("workspace_id")
+          .eq("user_id", user.id)
+          .limit(1);
+        if (memberships && memberships.length > 0) {
+          setWorkspaceId(memberships[0].workspace_id);
+        }
+      }
+    }
+    fetchUserAndWorkspace();
+  }, []);
   return (
     <>
       <Box sx={{ width: "100%", bgcolor: "white", borderBottom: "1px solid #eee", py: 3, px: { xs: 2, md: 4 }, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -40,7 +75,35 @@ export default function Home() {
             <Button component={Link} href="/dashboard" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 2, textTransform: "none" }}>Dashboard</Button>
           </Box>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, minWidth: 180, justifyContent: "flex-end" }}>
-            <Button component={Link} href="#" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Login</Button>
+            {user ? (
+              <>
+                <Button
+                  onClick={e => setAnchorEl(e.currentTarget)}
+                  color="inherit"
+                  sx={{ fontWeight: 600, fontSize: 18, px: 1, textTransform: "none" }}
+                >
+                  {user.user_metadata?.name || user.email}
+                </Button>
+                <Menu
+                  anchorEl={anchorEl}
+                  open={openMenu}
+                  onClose={() => setAnchorEl(null)}
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                >
+                  <MenuItem onClick={() => { setProfileOpen(true); setAnchorEl(null); }}>Profile</MenuItem>
+                  {workspaceId && <MenuItem onClick={() => { setMembersOpen(true); setAnchorEl(null); }}>Manage Members</MenuItem>}
+                  {workspaceId && <MenuItem onClick={() => { setSettingsOpen(true); setAnchorEl(null); }}>Workspace Settings</MenuItem>}
+                  <Divider />
+                  <MenuItem onClick={async () => { setAnchorEl(null); await supabase.auth.signOut(); window.location.reload(); }}>Logout</MenuItem>
+                </Menu>
+                <UserProfile open={profileOpen} setOpen={setProfileOpen} />
+                {workspaceId && <WorkspaceMembers workspaceId={workspaceId} open={membersOpen} setOpen={setMembersOpen} />}
+                {workspaceId && <WorkspaceSettings workspaceId={workspaceId} open={settingsOpen} setOpen={setSettingsOpen} />}
+              </>
+            ) : (
+              <Button component={Link} href="/auth" color="inherit" sx={{ fontWeight: 400, fontSize: 18, px: 1, textTransform: "none" }}>Login / Register</Button>
+            )}
             <Button component={Link} href="#demo" variant="contained" color="primary" endIcon={<ArrowRightAltIcon />} sx={{ fontWeight: 700, px: 4, py: 1.5, borderRadius: 2, boxShadow: 2, textTransform: "none", fontSize: 18 }}>
               Get Demo
             </Button>

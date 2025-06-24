@@ -91,16 +91,6 @@ export default function FeatureCall() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={handleCallNow}>
-          Call Now
-        </Button>
-        <Snackbar
-          open={alert}
-          autoHideDuration={4000}
-          onClose={() => setAlert(false)}
-          message="Please purchase a phone number first."
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-        />
       </CardContent>
     </Card>
   );

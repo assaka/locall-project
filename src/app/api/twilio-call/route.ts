@@ -13,7 +13,7 @@ if (!accountSid || !authToken) {
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  const { from, to, workspace_id, number_id } = await request.json();
+  const { from, to, workspace_id, number_id, agency_id } = await request.json();
 
   try {
     const call = await client.calls.create({
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     const { error: dbError } = await supabase
       .from('calls')
-      .insert([{ from, to, status: 'initiated', workspace_id, number_id, sid: call.sid }]);
+      .insert([{ from, to, status: 'initiated', workspace_id, number_id, agency_id, sid: call.sid }]);
 
     if (dbError) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });
