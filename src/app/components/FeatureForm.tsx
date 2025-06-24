@@ -10,14 +10,7 @@ import ListItemText from "@mui/material/ListItemText";
 import AssignmentTurnedInIcon from "@mui/icons-material/AssignmentTurnedIn";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
-import CircularProgress from "@mui/material/CircularProgress";
-import Alert from "@mui/material/Alert";
-import SettingsIcon from "@mui/icons-material/Settings";
+import Snackbar from '@mui/material/Snackbar';
 
 const features = [
   "Field-level tracking",
@@ -27,12 +20,12 @@ const features = [
 ];
 
 export default function FeatureForm() {
-  const [open, setOpen] = useState(false);
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [alert, setAlert] = useState(false);
 
   const handleSend = async () => {
     setLoading(true);
@@ -59,6 +52,16 @@ export default function FeatureForm() {
     }
   };
 
+  const handleSendMessage = async () => {
+    const res = await fetch('/api/twilio-numbers');
+    const data = await res.json();
+    if (!data.numbers || data.numbers.length === 0) {
+      setAlert(true);
+      return;
+    }
+    window.location.href = '/form';
+  };
+
   return (
     <Card elevation={3} sx={{ borderRadius: 4, p: 0, bgcolor: "#f7faff", height: "100%", boxShadow: 6 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 4 }}>
@@ -81,9 +84,16 @@ export default function FeatureForm() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/form">
+        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={handleSendMessage}>
           Send Message
         </Button>
+        <Snackbar
+          open={alert}
+          autoHideDuration={4000}
+          onClose={() => setAlert(false)}
+          message="Please purchase a phone number first."
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        />
       </CardContent>
     </Card>
   );

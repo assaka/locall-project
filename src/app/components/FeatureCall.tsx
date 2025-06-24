@@ -18,6 +18,7 @@ import TextField from "@mui/material/TextField";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
 import SettingsIcon from '@mui/icons-material/Settings';
+import Snackbar from '@mui/material/Snackbar';
 
 const features = [
   "Place and receive calls",
@@ -32,6 +33,7 @@ export default function FeatureCall() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [alert, setAlert] = useState(false);
 
   const handleCall = async () => {
     setLoading(true);
@@ -57,6 +59,16 @@ export default function FeatureCall() {
     }
   };
 
+  const handleCallNow = async () => {
+    const res = await fetch('/api/twilio-numbers');
+    const data = await res.json();
+    if (!data.numbers || data.numbers.length === 0) {
+      setAlert(true);
+      return;
+    }
+    window.location.href = '/call';
+  };
+
   return (
     <Card elevation={3} sx={{ borderRadius: 4, p: 0, bgcolor: "#f7faff", height: "100%", boxShadow: 6 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 4 }}>
@@ -79,9 +91,16 @@ export default function FeatureCall() {
             </ListItem>
           ))}
         </List>
-        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} component="a" href="/call">
+        <Button variant="contained" color="primary" sx={{ mt: 3, fontWeight: 700, px: 4 }} onClick={handleCallNow}>
           Call Now
         </Button>
+        <Snackbar
+          open={alert}
+          autoHideDuration={4000}
+          onClose={() => setAlert(false)}
+          message="Please purchase a phone number first."
+          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        />
       </CardContent>
     </Card>
   );
