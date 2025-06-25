@@ -19,24 +19,6 @@ const PurchasePage: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
-  const [workspace_id, setWorkspaceId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchWorkspaceAndAgency = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: memberships } = await supabase
-          .from('workspace_members')
-          .select('workspace_id, workspaces(agency_id)')
-          .eq('user_id', user.id);
-
-        if (memberships && memberships.length > 0) {
-          setWorkspaceId(memberships[0].workspace_id);
-        }
-      }
-    };
-    fetchWorkspaceAndAgency();
-  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +52,7 @@ const PurchasePage: React.FC = () => {
     const res = await fetch("/api/twilio-purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buy: number, user_id, workspace_id }),
+      body: JSON.stringify({ buy: number, user_id }),
     });
     if (!res.ok) {
       const error = await res.text();

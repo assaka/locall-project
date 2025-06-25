@@ -80,14 +80,6 @@ interface FormSubmission {
   user_agent: string | null;
 }
 
-interface Agency {
-  id: string;
-  name: string;
-  logo_url?: string;
-  primary_color?: string;
-  text_color?: string;
-}
-
 interface Member {
   user_id: string;
   users?: { email?: string };
@@ -100,17 +92,14 @@ export default function DashboardPage() {
   const [forms, setForms] = useState<FormSubmission[]>([]);
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState("");
-  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; agency_id: string }[]>([]);
-  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [workspaces, setWorkspaces] = useState<{ id: string; name: string }[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
-  const [selectedAgency, setSelectedAgency] = useState<string>("");
   const [members, setMembers] = useState<Member[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [membersTabLoading, setMembersTabLoading] = useState(false);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("all");
-  const [agencyBranding, setAgencyBranding] = useState<{ logo_url?: string; primary_color?: string; text_color?: string }>({});
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [noteCallId, setNoteCallId] = useState<string | null>(null);
   const [noteMessage, setNoteMessage] = useState('');
@@ -120,57 +109,44 @@ export default function DashboardPage() {
   const [profileTabEvents, setProfileTabEvents] = useState<unknown[]>([]);
 
   useEffect(() => {
-    const fetchWorkspacesAndAgencies = async () => {
+    const fetchWorkspaces = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setNotLoggedIn(true);
         return;
       }
       await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
-      const agencyRes = await supabase.from('agencies').select('id, name, logo_url, primary_color, text_color');
-      const workspaceRes = await supabase.from('workspaces').select('id, name, agency_id');
-      if (agencyRes.data) setAgencies(agencyRes.data as Agency[]);
+      const workspaceRes = await supabase.from('workspaces').select('id, name');
       if (workspaceRes.data) {
         setWorkspaces(workspaceRes.data);
         if (!selectedWorkspace && workspaceRes.data.length > 0) {
           setSelectedWorkspace(workspaceRes.data[0].id);
-          setSelectedAgency(workspaceRes.data[0].agency_id);
-        }
-      }
-      if (selectedAgency && agencies.length > 0) {
-        const agency = agencies.find((a) => (a as Agency).id === selectedAgency);
-        if (agency) {
-          setAgencyBranding({
-            logo_url: agency.logo_url,
-            primary_color: agency.primary_color,
-            text_color: agency.text_color,
-          });
         }
       }
     };
-    fetchWorkspacesAndAgencies();
-  }, [selectedAgency, agencies]);
+    fetchWorkspaces();
+  }, [selectedWorkspace]);
 
   useEffect(() => {
     if (!selectedWorkspace) return;
     const fetchData = async () => {
       const { data: numbersData } = await supabase
         .from("numbers")
-        .select("id, phone_number, workspace_id, agency_id, purchased_at")
+        .select("id, phone_number, workspace_id, purchased_at")
         .eq('workspace_id', selectedWorkspace)
         .order("purchased_at", { ascending: false })
         .limit(100);
       setNumbers((numbersData as NumberRow[]) || []);
       const { data: callsData } = await supabase
         .from("calls")
-        .select("id, from_number, to_number, status, duration, recording_url, workspace_id, agency_id, created_at, user_id")
+        .select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id")
         .eq('workspace_id', selectedWorkspace)
         .order("created_at", { ascending: false })
         .limit(100);
       setCalls((callsData as Call[]) || []);
       const { data: formsData } = await supabase
         .from("form_submissions")
-        .select("id, workspace_id, agency_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
+        .select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
         .eq('workspace_id', selectedWorkspace)
         .order("submitted_at", { ascending: false })
         .limit(100);
@@ -311,7 +287,7 @@ export default function DashboardPage() {
 
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <Container maxWidth="xl" sx={{ py: 8, background: agencyBranding.primary_color || undefined, color: agencyBranding.text_color || undefined }}>
+      <Container maxWidth="xl" sx={{ py: 8, background: '#fff', color: '#000' }}>
         <Box display="flex" alignItems="center" mb={2} gap={2}>
           <Button
             variant="outlined"
@@ -323,9 +299,6 @@ export default function DashboardPage() {
           >
             Back to Home
           </Button>
-          {agencyBranding.logo_url && (
-            <Image src={agencyBranding.logo_url} alt="Agency Logo" width={48} height={48} style={{ borderRadius: 8 }} />
-          )}
         </Box>
         <Box display="flex" flexDirection="column" alignItems="center">
           <Typography variant="h3" fontWeight={900} align="center" gutterBottom>
@@ -370,26 +343,10 @@ export default function DashboardPage() {
                   value={selectedWorkspace ?? ""}
                   onChange={e => {
                     setSelectedWorkspace(e.target.value);
-                    const ws = workspaces.find(w => w.id === e.target.value);
-                    if (ws) setSelectedAgency(ws.agency_id);
                   }}
                 >
                   {workspaces.map(ws => (
                     <MenuItem key={ws.id} value={ws.id}>{ws.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <BusinessIcon color="secondary" />
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-                <InputLabel id="agency-label">Agency</InputLabel>
-                <Select
-                  labelId="agency-label"
-                  label="Agency"
-                  value={selectedAgency ?? ""}
-                  onChange={e => setSelectedAgency(e.target.value)}
-                >
-                  {agencies.map(ag => (
-                    <MenuItem key={ag.id} value={ag.id}>{ag.name}</MenuItem>
                   ))}
                 </Select>
               </FormControl>

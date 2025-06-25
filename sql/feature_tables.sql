@@ -4,7 +4,6 @@ CREATE TABLE numbers (
   phone_number text NOT NULL UNIQUE,
   user_id uuid REFERENCES users(id),         -- Make sure users table exists!
   workspace_id uuid REFERENCES workspaces(id) NOT NULL,
-  agency_id uuid REFERENCES agencies(id),
   purchased_at timestamptz DEFAULT now(),
   friendly_name text,
   is_active boolean DEFAULT true
@@ -18,7 +17,6 @@ CREATE TABLE calls (
   number_id uuid REFERENCES numbers(id),   
   user_id uuid REFERENCES users(id),       
   workspace_id uuid REFERENCES workspaces(id) NOT NULL,
-  agency_id uuid REFERENCES agencies(id),
   direction text CHECK (direction IN ('inbound', 'outbound')) NOT NULL,
   status text,                             
   duration integer,                        
@@ -31,7 +29,6 @@ CREATE TABLE calls (
 CREATE TABLE form_submissions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   workspace_id uuid REFERENCES workspaces(id) NOT NULL,
-  agency_id uuid REFERENCES agencies(id),
   user_id uuid REFERENCES users(id),       
   form_name text NOT NULL,
   submitted_at timestamptz DEFAULT now(),

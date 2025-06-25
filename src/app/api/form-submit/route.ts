@@ -12,43 +12,25 @@ if (!accountSid || !authToken) {
 const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
-  const {
-    name,
-    phone,
-    message,
-    workspace_id,
-    agency_id,
-    user_id,
-    form_name,
-    source,
-    ip_address,
-    user_agent,
-    from,
-    visitor_id
-  } = await request.json();
+  const { name, phone, message, from, workspace_id, user_id, form_name, visitor_id } = await request.json();
 
-  if (!phone || !workspace_id || !form_name) {
-    return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-  }
-
-  const { error: dbError } = await supabase
+  const { error } = await supabase
     .from('form_submissions')
     .insert([
       {
+        name,
+        phone,
+        message,
+        from,
         workspace_id,
-        agency_id: agency_id || null,
-        user_id: user_id || null,
-        visitor_id: visitor_id || null,
+        user_id,
         form_name,
-        data: { name, phone, message },
-        source: source || null,
-        ip_address: ip_address || null,
-        user_agent: user_agent || null,
-      }
+        visitor_id,
+      },
     ]);
 
-  if (dbError) {
-    return NextResponse.json({ error: dbError.message }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   try {

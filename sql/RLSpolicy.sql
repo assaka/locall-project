@@ -4,10 +4,6 @@ CREATE POLICY "Users can view their own data" ON users
 CREATE POLICY "Users can update their own data" ON users
   FOR UPDATE USING (auth.uid() = id);
 
-ALTER TABLE agencies ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Users can view agencies" ON agencies
-  FOR SELECT USING (true);
-
 ALTER TABLE workspaces ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view workspaces they own or are a member of" ON workspaces
   FOR SELECT USING (

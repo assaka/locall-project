@@ -5,17 +5,9 @@ CREATE TABLE IF NOT EXISTS users (
   created_at timestamptz DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS agencies (
-  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name text NOT NULL,
-  created_at timestamptz DEFAULT now(),
-  booking_link text
-);
-
 CREATE TABLE IF NOT EXISTS workspaces (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
   name text NOT NULL,
-  agency_id uuid REFERENCES agencies(id),
   owner_id uuid NOT NULL REFERENCES users(id),
   created_at timestamptz DEFAULT now(),
   booking_link text

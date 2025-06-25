@@ -14,7 +14,7 @@ const client = twilio(accountSid, authToken);
 
 export async function POST(request: Request) {
   const body = await request.json();
-  const { search, buy, workspace_id, agency_id } = body;
+  const { search, buy, workspace_id } = body;
 
   console.log("body", body);
 
@@ -34,7 +34,6 @@ export async function POST(request: Request) {
             phone_number: buy,
             user_id,
             workspace_id,
-            agency_id,
             purchased_at: new Date().toISOString(),
             friendly_name: purchased.friendlyName,
             is_active: true
