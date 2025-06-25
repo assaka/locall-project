@@ -85,7 +85,7 @@ export default function Pricing() {
           <Button variant="outlined" color="primary" sx={{ borderRadius: 2 }}>Annual (Save 20%)</Button>
         </Stack>
         <Stack direction={{ xs: "column", md: "row" }} spacing={4} justifyContent="center">
-          {plans.map((plan, idx) => (
+          {plans.map((plan) => (
             <Card key={plan.title} elevation={plan.featured ? 6 : 2} sx={{ flex: 1, borderRadius: 4, border: plan.featured ? "2px solid" : undefined, borderColor: plan.featured ? "primary.main" : undefined, position: "relative", overflow: "hidden", boxShadow: plan.featured ? 6 : 2 }}>
               {plan.featured && (
                 <Box sx={{ position: "absolute", top: 0, right: 0, bgcolor: "primary.main", color: "#fff", fontSize: 12, fontWeight: 700, px: 2, py: 0.5, borderBottomLeftRadius: 8 }}>

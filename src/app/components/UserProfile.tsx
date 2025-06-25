@@ -8,7 +8,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
 export default function UserProfile({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
   const [name, setName] = useState("");

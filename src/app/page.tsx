@@ -32,9 +32,16 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
 
+// Define a type for the user object
+interface User {
+  email?: string;
+  user_metadata?: { name?: string };
+  [key: string]: unknown;
+}
+
 export default function Home() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);

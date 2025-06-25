@@ -13,15 +13,13 @@ import { supabase } from '@/app/utils/supabaseClient';
 
 const PurchasePage: React.FC = () => {
   const [areaCode, setAreaCode] = useState("");
-  const [numbers, setNumbers] = useState<any[]>([]);
+  const [numbers, setNumbers] = useState<unknown[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [purchasedNumber, setPurchasedNumber] = useState<string | null>(null);
   const [step, setStep] = useState(0);
   const [workspace_id, setWorkspaceId] = useState<string | null>(null);
-  const [agency_id, setAgencyId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchWorkspaceAndAgency = async () => {
@@ -45,7 +43,6 @@ const PurchasePage: React.FC = () => {
     setMessage("");
     setError("");
     setNumbers([]);
-    setPurchasedNumber(null);
     setLoading(true);
     setStep(1);
     const res = await fetch("/api/twilio-purchase", {
@@ -73,7 +70,7 @@ const PurchasePage: React.FC = () => {
     const res = await fetch("/api/twilio-purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buy: number, user_id, workspace_id, agency_id }),
+      body: JSON.stringify({ buy: number, user_id, workspace_id }),
     });
     if (!res.ok) {
       const error = await res.text();
@@ -83,7 +80,6 @@ const PurchasePage: React.FC = () => {
     setBuying(null);
     if (data.purchased) {
       setMessage(`Purchased: ${data.purchased.phoneNumber}`);
-      setPurchasedNumber(data.purchased.phoneNumber);
       setNumbers([]);
       setStep(3);
     } else {
@@ -137,7 +133,7 @@ const PurchasePage: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} mb={2}>Available Numbers:</Typography>
               <List sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                {numbers.map(num => (
+                {numbers.map((num: any) => (
                   <ListItem key={num.phoneNumber} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
                     <Typography fontFamily="monospace" fontSize={18}>{num.phoneNumber}</Typography>
                     <Button

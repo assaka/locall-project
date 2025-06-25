@@ -18,8 +18,6 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [workspace_id, setWorkspaceId] = useState(null);
-  const [agency_id, setAgencyId] = useState(null);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -61,8 +59,6 @@ export default function AuthPage() {
           .eq('id', user.id)
           .single();
         if (!error && data) {
-          setWorkspaceId(data.workspace_id);
-          setAgencyId(data.agency_id);
         }
       }
     };

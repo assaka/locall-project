@@ -9,15 +9,6 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import ListItemText from "@mui/material/ListItemText";
 import AddIcCallIcon from "@mui/icons-material/AddIcCall";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import TextField from "@mui/material/TextField";
-import CircularProgress from "@mui/material/CircularProgress";
-import Alert from "@mui/material/Alert";
-import SearchIcon from '@mui/icons-material/Search';
 
 const features = [
   "Instantly buy local/toll-free numbers",
@@ -27,36 +18,6 @@ const features = [
 ];
 
 export default function FeaturePurchase() {
-  const [open, setOpen] = useState(false);
-  const [phone, setPhone] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState("");
-  const [error, setError] = useState("");
-
-  const handleBuy = async () => {
-    setLoading(true);
-    setSuccess("");
-    setError("");
-    try {
-      const res = await fetch("/api/twilio-purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSuccess("Number purchased successfully!");
-        setPhone("");
-      } else {
-        setError(data.error || "Failed to purchase number.");
-      }
-    } catch (e) {
-      setError("Network error. Try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <Card elevation={3} sx={{ borderRadius: 4, p: 0, bgcolor: "#f7faff", height: "100%", boxShadow: 6 }}>
       <CardContent sx={{ display: "flex", flexDirection: "column", alignItems: "center", p: 4 }}>

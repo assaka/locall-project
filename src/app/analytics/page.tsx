@@ -93,7 +93,7 @@ export default function AnalyticsPage() {
       ) : (
         <>
           <Box display="flex" justifyContent="center" gap={3} mb={4}>
-            {summary.map((s, i) => (
+            {summary.map((s) => (
               <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
                 {s.icon}
                 <Box>
@@ -142,4 +142,4 @@ export default function AnalyticsPage() {
       )}
     </Container>
   );
-} 
+}
