@@ -39,18 +39,20 @@ import GroupIcon from '@mui/icons-material/Group';
 import { ensurePersonalWorkspace } from "@/app/utils/ensurePersonalWorkspace";
 import AddIcCallIcon from '@mui/icons-material/AddIcCall';
 import Tooltip from '@mui/material/Tooltip';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
 interface NumberRow {
   id: string;
   phone_number: string;
   workspace_id?: string | null;
-  created_at: string;
+  purchased_at: string;
 }
 
 interface Call {
   id: string;
-  from: string;
-  to: string;
+  from_number: string;
+  to_number: string;
   status: string;
   duration?: number | null;
   recording_url?: string | null;
@@ -59,10 +61,15 @@ interface Call {
 
 interface FormSubmission {
   id: string;
-  name: string | null;
-  phone: string;
-  message: string | null;
-  created_at: string;
+  workspace_id: string;
+  agency_id: string | null;
+  user_id: string | null;
+  form_name: string;
+  submitted_at: string;
+  data: Record<string, any>;
+  source: string | null;
+  ip_address: string | null;
+  user_agent: string | null;
 }
 
 export default function DashboardPage() {
@@ -80,52 +87,50 @@ export default function DashboardPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [membersTabLoading, setMembersTabLoading] = useState(false);
-  const session = null;
+  const [notLoggedIn, setNotLoggedIn] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const checkAuthAndFetch = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
+      if (!user) {
+        setNotLoggedIn(true);
+        return;
       }
+      await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
       const agencyRes = await supabase.from('agencies').select('id, name');
       const workspaceRes = await supabase.from('workspaces').select('id, name, agency_id');
       if (agencyRes.data) setAgencies(agencyRes.data);
       if (workspaceRes.data) setWorkspaces(workspaceRes.data);
-      if (workspaceRes.data && workspaceRes.data.length > 0 && !selectedWorkspace) {
-        setSelectedWorkspace(workspaceRes.data[0].id);
-        setSelectedAgency(workspaceRes.data[0].agency_id);
+      if (workspaces.length > 0 && !selectedWorkspace) {
+        setSelectedWorkspace(workspaces[0].id);
+        setSelectedAgency(workspaces[0].agency_id);
       }
+      if (!selectedWorkspace) return;
       const { data: numbersData } = await supabase
         .from("numbers")
-        .select("id, phone_number, workspace_id, agency_id, created_at")
+        .select("id, phone_number, workspace_id, agency_id, purchased_at")
         .eq('workspace_id', selectedWorkspace)
-        .eq('agency_id', selectedAgency)
-        .order("created_at", { ascending: false })
+        .order("purchased_at", { ascending: false })
         .limit(100);
       setNumbers((numbersData as NumberRow[]) || []);
-
       const { data: callsData } = await supabase
         .from("calls")
-        .select("id, from, to, status, duration, recording_url, workspace_id, agency_id, created_at")
+        .select("id, from_number, to_number, status, duration, recording_url, workspace_id, agency_id, created_at")
         .eq('workspace_id', selectedWorkspace)
-        .eq('agency_id', selectedAgency)
         .order("created_at", { ascending: false })
         .limit(100);
       setCalls((callsData as Call[]) || []);
-
       const { data: formsData } = await supabase
         .from("form_submissions")
-        .select("id, name, phone, message, workspace_id, agency_id, created_at")
+        .select("id, workspace_id, agency_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
         .eq('workspace_id', selectedWorkspace)
-        .eq('agency_id', selectedAgency)
-        .order("created_at", { ascending: false })
+        .order("submitted_at", { ascending: false })
         .limit(100);
       setForms((formsData as FormSubmission[]) || []);
       setLoading(false);
+      setNotLoggedIn(false);
     };
-    fetchData();
+    checkAuthAndFetch();
   }, [selectedWorkspace, selectedAgency]);
 
   useEffect(() => {
@@ -154,14 +159,24 @@ export default function DashboardPage() {
   };
 
   const filteredNumbers = numbers.filter(n => n.phone_number.includes(search));
-  const filteredCalls = calls.filter(c => c.from.includes(search) || c.to.includes(search));
-  const filteredForms = forms.filter(f => (f.name || "").toLowerCase().includes(search.toLowerCase()) || f.phone.includes(search));
+  const filteredCalls = calls.filter(c => c.from_number.includes(search) || c.to_number.includes(search));
+  const filteredForms = forms.filter(f => (f.form_name || "").toLowerCase().includes(search.toLowerCase()) || f.data.phone.includes(search));
 
   const summary = [
     { label: "Numbers", value: numbers.length, icon: <PhoneIphoneIcon color="primary" /> },
     { label: "Calls", value: calls.length, icon: <CallIcon color="success" /> },
     { label: "Forms", value: forms.length, icon: <AssignmentIndIcon color="warning" /> },
   ];
+
+  if (notLoggedIn) {
+    return (
+      <Snackbar open={true} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
+        <MuiAlert elevation={6} variant="filled" severity="warning">
+          You must be logged in to view the dashboard.
+        </MuiAlert>
+      </Snackbar>
+    );
+  }
 
   return (
     <Container maxWidth="md" sx={{ py: 6 }}>
@@ -206,7 +221,7 @@ export default function DashboardPage() {
           <Select
             labelId="workspace-label"
             label="Workspace"
-            value={selectedWorkspace}
+            value={selectedWorkspace ?? ""}
             onChange={e => {
               setSelectedWorkspace(e.target.value);
               const ws = workspaces.find(w => w.id === e.target.value);
@@ -224,7 +239,7 @@ export default function DashboardPage() {
           <Select
             labelId="agency-label"
             label="Agency"
-            value={selectedAgency}
+            value={selectedAgency ?? ""}
             onChange={e => setSelectedAgency(e.target.value)}
           >
             {agencies.map(ag => (
@@ -247,7 +262,7 @@ export default function DashboardPage() {
             <TextField
               size="small"
               placeholder="Search numbers..."
-              value={search}
+              value={search ?? ""}
               onChange={e => setSearch(e.target.value)}
               InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
               sx={{ width: 260 }}
@@ -266,42 +281,75 @@ export default function DashboardPage() {
               </Button>
             </Tooltip>
           </Box>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Phone Number</TableCell>
-                  <TableCell>Workspace</TableCell>
-                  <TableCell>Purchased At</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredNumbers.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center" sx={{ color: 'text.disabled', py: 6 }}>
-                      <InfoOutlinedIcon sx={{ mb: 1 }} />
-                      <br />No numbers found.
-                    </TableCell>
+          {tab === 0 && (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                    <TableCell>Phone Number</TableCell>
+                    <TableCell>Workspace</TableCell>
+                    <TableCell>Purchased At</TableCell>
+                    <TableCell>Actions</TableCell>
                   </TableRow>
-                ) : (
-                  filteredNumbers.map((num, idx) => (
-                    <TableRow key={num.id} sx={{ backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper' }}>
-                      <TableCell>
-                        <a href={`tel:${num.phone_number}`} style={{ color: '#1976d2', textDecoration: 'none' }}>{num.phone_number}</a>
+                </TableHead>
+                <TableBody>
+                  {filteredNumbers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} align="center" sx={{ color: 'text.disabled', py: 6 }}>
+                        <InfoOutlinedIcon sx={{ mb: 1 }} />
+                        <br />No data found.
                       </TableCell>
-                      <TableCell>{num.workspace_id || '-'}</TableCell>
-                      <TableCell>{new Date(num.created_at).toLocaleString()}</TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  ) : (
+                    filteredNumbers.map((num, idx) => (
+                      <TableRow
+                        key={num.id}
+                        sx={{
+                          backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
+                          transition: 'background 0.2s',
+                          '&:hover': { backgroundColor: 'primary.lighter' }
+                        }}
+                      >
+                        <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Tooltip title={num.phone_number}>
+                            <span>{num.phone_number}</span>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell>{num.workspace_id || '-'}</TableCell>
+                        <TableCell align="right">
+                          {new Date(num.purchased_at).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            component={Link}
+                            href={`/call?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
+                            sx={{ mr: 1 }}
+                          >
+                            Call
+                          </Button>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            component={Link}
+                            href={`/form?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
+                          >
+                            Message
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
           {tab === 1 && (
             <TableContainer>
               <Table size="small">
                 <TableHead>
-                  <TableRow>
+                  <TableRow sx={{ backgroundColor: 'grey.100' }}>
                     <TableCell>From</TableCell>
                     <TableCell>To</TableCell>
                     <TableCell>Status</TableCell>
@@ -315,20 +363,31 @@ export default function DashboardPage() {
                     <TableRow>
                       <TableCell colSpan={6} align="center" sx={{ color: 'text.disabled', py: 6 }}>
                         <InfoOutlinedIcon sx={{ mb: 1 }} />
-                        <br />No calls found.
+                        <br />No data found.
                       </TableCell>
                     </TableRow>
                   ) : (
                     filteredCalls.map((call, idx) => (
-                      <TableRow key={call.id} sx={{ backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper' }}>
-                        <TableCell>
-                          <a href={`tel:${call.from}`} style={{ color: '#1976d2', textDecoration: 'none' }}>{call.from}</a>
+                      <TableRow
+                        key={call.id}
+                        sx={{
+                          backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
+                          transition: 'background 0.2s',
+                          '&:hover': { backgroundColor: 'primary.lighter' }
+                        }}
+                      >
+                        <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Tooltip title={call.from_number}>
+                            <span>{call.from_number}</span>
+                          </Tooltip>
+                        </TableCell>
+                        <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Tooltip title={call.to_number}>
+                            <span>{call.to_number}</span>
+                          </Tooltip>
                         </TableCell>
                         <TableCell>
-                          <a href={`tel:${call.to}`} style={{ color: '#1976d2', textDecoration: 'none' }}>{call.to}</a>
-                        </TableCell>
-                        <TableCell>
-                          <Chip label={call.status} color={call.status === 'completed' ? 'success' : call.status === 'failed' ? 'error' : 'warning'} size="small" />
+                          <Chip label={call.status} color={call.status === 'completed' ? 'success' : 'warning'} size="small" />
                         </TableCell>
                         <TableCell>{call.duration ? `${call.duration} sec` : '-'}</TableCell>
                         <TableCell>
@@ -349,6 +408,7 @@ export default function DashboardPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow>
+                    <TableCell>Form Name</TableCell>
                     <TableCell>Name</TableCell>
                     <TableCell>Phone</TableCell>
                     <TableCell>Message</TableCell>
@@ -356,25 +416,15 @@ export default function DashboardPage() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredForms.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={4} align="center" sx={{ color: 'text.disabled', py: 6 }}>
-                        <InfoOutlinedIcon sx={{ mb: 1 }} />
-                        <br />No form submissions found.
-                      </TableCell>
+                  {forms.map((form) => (
+                    <TableRow key={form.id}>
+                      <TableCell>{form.form_name}</TableCell>
+                      <TableCell>{form.data?.name ?? '-'}</TableCell>
+                      <TableCell>{form.data?.phone ?? '-'}</TableCell>
+                      <TableCell>{form.data?.message ?? '-'}</TableCell>
+                      <TableCell>{new Date(form.submitted_at).toLocaleString()}</TableCell>
                     </TableRow>
-                  ) : (
-                    filteredForms.map((form, idx) => (
-                      <TableRow key={form.id} sx={{ backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper' }}>
-                        <TableCell>{form.name}</TableCell>
-                        <TableCell>
-                          <a href={`tel:${form.phone}`} style={{ color: '#1976d2', textDecoration: 'none' }}>{form.phone}</a>
-                        </TableCell>
-                        <TableCell>{form.message}</TableCell>
-                        <TableCell>{new Date(form.created_at).toLocaleString()}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </TableContainer>
@@ -393,7 +443,6 @@ export default function DashboardPage() {
                   </Card>
                 ))}
               </Box>
-              {/* Funnel Visualization */}
               <Box mb={4} textAlign="center">
                 <Typography variant="h6" fontWeight={700} mb={2}>Conversion Funnel</Typography>
                 <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
@@ -413,21 +462,28 @@ export default function DashboardPage() {
                   </Box>
                 </Box>
               </Box>
-              {/* Timeline of Recent Events */}
               <Box>
                 <Typography variant="h6" fontWeight={700} mb={2}>Recent Activity Timeline</Typography>
                 <Box>
-                  {[...calls, ...forms].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10).map((event, idx) => (
-                    <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
-                      <Chip label={"from" in event ? "Call" : "Form"} color={"from" in event ? "success" : "warning"} size="small" />
-                      <Typography fontWeight={600}>
-                        {"from" in event ? `${event.from} → ${event.to}` : event.name || event.phone}
-                      </Typography>
-                      <Typography color="text.secondary" fontSize={13}>
-                        {new Date(event.created_at).toLocaleString()}
-                      </Typography>
-                    </Box>
-                  ))}
+                  {[...calls, ...forms]
+                    .sort((a, b) => 
+                      new Date("submitted_at" in b ? b.submitted_at : b.created_at).getTime() -
+                      new Date("submitted_at" in a ? a.submitted_at : a.created_at).getTime()
+                    )
+                    .slice(0, 10)
+                    .map((event, idx) => (
+                      <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
+                        <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
+                        <Typography fontWeight={600}>
+                          {"from_number" in event
+                            ? `${event.from_number} → ${event.to_number}`
+                            : (event as FormSubmission).form_name || (event as FormSubmission).data.phone}
+                        </Typography>
+                        <Typography color="text.secondary" fontSize={13}>
+                          {new Date("submitted_at" in event ? event.submitted_at : event.created_at).toLocaleString()}
+                        </Typography>
+                      </Box>
+                    ))}
                 </Box>
               </Box>
             </Box>
@@ -460,7 +516,7 @@ export default function DashboardPage() {
                   <TextField
                     size="small"
                     label="Invite by Email"
-                    value={inviteEmail}
+                    value={inviteEmail ?? ""}
                     onChange={e => setInviteEmail(e.target.value)}
                     type="email"
                     required

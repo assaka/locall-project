@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Box, Typography, Card, Button, TextField, List, ListItem, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -9,6 +9,7 @@ import Step from '@mui/material/Step';
 import StepLabel from '@mui/material/StepLabel';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { supabase } from '@/app/utils/supabaseClient';
 
 const PurchasePage: React.FC = () => {
   const [areaCode, setAreaCode] = useState("");
@@ -19,6 +20,25 @@ const PurchasePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [purchasedNumber, setPurchasedNumber] = useState<string | null>(null);
   const [step, setStep] = useState(0);
+  const [workspace_id, setWorkspaceId] = useState<string | null>(null);
+  const [agency_id, setAgencyId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchWorkspaceAndAgency = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: memberships } = await supabase
+          .from('workspace_members')
+          .select('workspace_id, workspaces(agency_id)')
+          .eq('user_id', user.id);
+
+        if (memberships && memberships.length > 0) {
+          setWorkspaceId(memberships[0].workspace_id);
+        }
+      }
+    };
+    fetchWorkspaceAndAgency();
+  }, []);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,10 +68,12 @@ const PurchasePage: React.FC = () => {
     setBuying(number);
     setMessage("");
     setError("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const user_id = user?.id;
     const res = await fetch("/api/twilio-purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buy: number }),
+      body: JSON.stringify({ buy: number, user_id, workspace_id, agency_id }),
     });
     if (!res.ok) {
       const error = await res.text();

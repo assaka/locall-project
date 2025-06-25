@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/app/utils/supabaseClient";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
@@ -18,6 +18,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [workspace_id, setWorkspaceId] = useState(null);
+  const [agency_id, setAgencyId] = useState(null);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -48,6 +50,24 @@ export default function AuthPage() {
     if (error) setError(error.message);
     else setSuccess("Registration successful! Check your email to confirm.");
   };
+
+  useEffect(() => {
+    const fetchIds = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data, error } = await supabase
+          .from('users')
+          .select('workspace_id, agency_id')
+          .eq('id', user.id)
+          .single();
+        if (!error && data) {
+          setWorkspaceId(data.workspace_id);
+          setAgencyId(data.agency_id);
+        }
+      }
+    };
+    fetchIds();
+  }, []);
 
   return (
     <Container maxWidth="sm" sx={{ py: 8 }}>

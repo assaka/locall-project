@@ -1,25 +1,16 @@
 import { NextResponse } from 'next/server';
-import twilio from 'twilio';
+import { supabase } from '@/app/utils/supabaseClient';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-
-if (!accountSid || !authToken) {
-  throw new Error('Twilio credentials are not set in the environment variables.');
-}
-
-const client = twilio(accountSid, authToken);
-
-export async function GET() {
-  try {
-    const numbers = await client.incomingPhoneNumbers.list();
-    const voiceNumbers = numbers.filter(num => num.capabilities.voice);
-    return NextResponse.json({ numbers: voiceNumbers.map(num => ({
-      sid: num.sid,
-      phoneNumber: num.phoneNumber,
-      friendlyName: num.friendlyName,
-    })) });
-  } catch (error: any) {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const workspace_id = searchParams.get('workspace_id');
+  const user_id = searchParams.get('user_id');
+  let query = supabase.from('numbers').select('*');
+  if (workspace_id) query = query.eq('workspace_id', workspace_id);
+  if (user_id) query = query.eq('user_id', user_id);
+  const { data, error } = await query;
+  if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  return NextResponse.json({ numbers: data });
 } 
