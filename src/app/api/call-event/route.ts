@@ -30,7 +30,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
     return NextResponse.json({ success: true, event: newEvent });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    let message = 'Unknown error';
+    if (err instanceof Error) {
+      message = err.message;
+    } else if (typeof err === 'object' && err && 'message' in err) {
+      message = String((err as { message: unknown }).message);
+    }
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -47,6 +47,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Image from 'next/image';
 
 interface NumberRow {
   id: string;
@@ -83,7 +84,6 @@ export default function DashboardPage() {
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
   const [calls, setCalls] = useState<Call[]>([]);
   const [forms, setForms] = useState<FormSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
   const [search, setSearch] = useState("");
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string; agency_id: string }[]>([]);
@@ -124,7 +124,7 @@ export default function DashboardPage() {
         }
       }
       if (selectedAgency && agencyRes.data) {
-        const agency = agencyRes.data.find((a: any) => a.id === selectedAgency);
+        const agency = agencyRes.data.find((a) => (a as { id: string }).id === selectedAgency) as { logo_url?: string; primary_color?: string; text_color?: string } | undefined;
         if (agency) {
           setAgencyBranding({
             logo_url: agency.logo_url,
@@ -139,7 +139,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!selectedWorkspace) return;
-    setLoading(true);
     const fetchData = async () => {
       const { data: numbersData } = await supabase
         .from("numbers")
@@ -162,7 +161,6 @@ export default function DashboardPage() {
         .order("submitted_at", { ascending: false })
         .limit(100);
       setForms((formsData as FormSubmission[]) || []);
-      setLoading(false);
     };
     fetchData();
   }, [selectedWorkspace]);
@@ -175,7 +173,7 @@ export default function DashboardPage() {
         .select('id, role, user_id, users(email)')
         .eq('workspace_id', selectedWorkspace)
         .then(({ data }) => {
-          setMembers((data || []).map((m: any) => ({ id: m.user_id, email: m.users?.email || '', role: m.role })));
+          setMembers((data || []).map((m) => ({ id: (m as any).user_id, email: (m as any).users?.email || '', role: (m as any).role })));
           setMembersTabLoading(false);
         });
     }
@@ -308,7 +306,7 @@ export default function DashboardPage() {
           Back to Home
         </Button>
         {agencyBranding.logo_url && (
-          <img src={agencyBranding.logo_url} alt="Agency Logo" style={{ height: 48, borderRadius: 8 }} />
+          <Image src={agencyBranding.logo_url} alt="Agency Logo" width={48} height={48} style={{ borderRadius: 8 }} />
         )}
       </Box>
       <Box display="flex" flexDirection="column" alignItems="center">
@@ -319,7 +317,7 @@ export default function DashboardPage() {
           All your numbers, calls, and form submissions in one place.
         </Typography>
         <Box display="flex" justifyContent="center" gap={3} mb={2}>
-          {summary.map((s, i) => (
+          {summary.map((s) => (
             <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
               {s.icon}
               <Box>
@@ -544,8 +542,8 @@ export default function DashboardPage() {
                             <TableCell>{new Date(call.created_at).toLocaleString()}</TableCell>
                             <TableCell>
                               <Box>
-                                {(callEvents[call.id] || []).map((event, i) => (
-                                  <Box key={i} mb={1}>
+                                {(callEvents[call.id] || []).map((event) => (
+                                  <Box key={event.id} mb={1}>
                                     <Chip label={event.type} size="small" sx={{ mr: 1 }} />
                                     <Typography component="span" fontSize={13}>{event.message}</Typography>
                                     <Typography component="span" color="text.secondary" fontSize={11} sx={{ ml: 1 }}>
@@ -625,7 +623,7 @@ export default function DashboardPage() {
                         <PieChart>
                           <Pie data={topNumbers} dataKey="count" nameKey="number" cx="50%" cy="50%" outerRadius={60} label>
                             {topNumbers.map((entry, idx) => (
-                              <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                              <Cell key={entry.number} fill={COLORS[idx % COLORS.length]} />
                             ))}
                           </Pie>
                           <Legend />
@@ -643,7 +641,7 @@ export default function DashboardPage() {
                         new Date('submitted_at' in a ? a.submitted_at : a.created_at).getTime()
                       )
                       .slice(0, 20)
-                      .map((event, idx) => (
+                      .map((event) => (
                         <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
                           <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
                           <Typography fontWeight={600}>
@@ -725,7 +723,7 @@ export default function DashboardPage() {
                     <Typography color="text.secondary">No events found for this visitor ID.</Typography>
                   ) : (
                     <Box>
-                      {profileTabEvents.map((event, idx) => (
+                      {profileTabEvents.map((event) => (
                         <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
                           <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
                           <Typography fontWeight={600}>
