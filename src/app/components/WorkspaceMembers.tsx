@@ -17,8 +17,15 @@ import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
+// Define a type for workspace member
+interface WorkspaceMember {
+  user_id: string;
+  users?: { email?: string };
+  role: string;
+}
+
 export default function WorkspaceMembers({ workspaceId, open, setOpen }: { workspaceId: string, open: boolean, setOpen: (open: boolean) => void }) {
-  const [members, setMembers] = useState<{ id: string; email: string; role: string }[]>([]);
+  const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -31,7 +38,7 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
       .from('workspace_members')
       .select('id, role, user_id, users(email)')
       .eq('workspace_id', workspaceId);
-    setMembers((data || []).map((m: any) => ({ id: m.user_id, email: m.users?.email || '', role: m.role })));
+    setMembers(data as WorkspaceMember[]);
     setLoading(false);
   };
 
@@ -98,22 +105,22 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
               <Typography color="text.secondary">No members found.</Typography>
             ) : (
               members.map((m) => {
-                const isSelf = m.id === currentUserId;
+                const isSelf = m.user_id === currentUserId;
                 const isOnlyAdmin = m.role === 'admin' && members.filter(mem => mem.role === 'admin').length === 1;
                 return (
-                  <ListItem key={m.id} secondaryAction={
+                  <ListItem key={m.user_id} secondaryAction={
                     currentUserRole === 'admin' && !isSelf ? (
                       <>
-                        <IconButton edge="end" aria-label="change-role" onClick={() => handleChangeRole(m.id, m.role)}>
+                        <IconButton edge="end" aria-label="change-role" onClick={() => handleChangeRole(m.user_id, m.role)}>
                           <SwapHorizIcon />
                         </IconButton>
-                        <IconButton edge="end" aria-label="remove" onClick={() => handleRemove(m.id)} disabled={isOnlyAdmin}>
+                        <IconButton edge="end" aria-label="remove" onClick={() => handleRemove(m.user_id)} disabled={isOnlyAdmin}>
                           <DeleteIcon />
                         </IconButton>
                       </>
                     ) : null
                   }>
-                    <ListItemText primary={m.email} />
+                    <ListItemText primary={m.users?.email} />
                     <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
                   </ListItem>
                 );

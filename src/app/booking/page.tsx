@@ -30,7 +30,7 @@ export default function BookingPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [selectedWorkspace]);
 
   useEffect(() => {
     const ws = workspaces.find(w => w.id === selectedWorkspace);

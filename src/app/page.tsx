@@ -31,17 +31,11 @@ import UserProfile from "./components/UserProfile";
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Divider from '@mui/material/Divider';
-
-// Define a type for the user object
-interface User {
-  email?: string;
-  user_metadata?: { name?: string };
-  [key: string]: unknown;
-}
+import type { User as SupabaseUser } from '@supabase/auth-js';
 
 export default function Home() {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -50,14 +44,14 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchUserAndWorkspace() {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        await acceptPendingInvitations({ id: user.id, email: user.email || "" });
+      const { data: { user: supabaseUser } } = await supabase.auth.getUser();
+      if (supabaseUser) {
+        setUser(supabaseUser);
+        await acceptPendingInvitations({ id: supabaseUser.id, email: supabaseUser.email || "" });
         const { data: memberships } = await supabase
           .from("workspace_members")
           .select("workspace_id")
-          .eq("user_id", user.id)
+          .eq("user_id", supabaseUser.id)
           .limit(1);
         if (memberships && memberships.length > 0) {
           setWorkspaceId(memberships[0].workspace_id);

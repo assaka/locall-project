@@ -50,7 +50,7 @@ export default function Testimonials() {
             Trusted by <Box component="span" color="primary.main">8,000+ Businesses</Box>
           </Typography>
           <Typography variant="h6" color="text.secondary" sx={{ maxWidth: 600, mx: "auto" }}>
-            Don't just take our word for it - hear from our customers
+            Don&apos;t just take our word for it - hear from our customers
           </Typography>
         </Box>
         <Stack direction={{ xs: "column", md: "row" }} spacing={4}>
@@ -65,7 +65,7 @@ export default function Testimonials() {
                   </Box>
                 </Box>
                 <Typography color="text.secondary" fontStyle="italic" mb={2}>
-                  "{t.quote}"
+                  &quot;{t.quote}&quot;
                 </Typography>
                 <Box display="flex" alignItems="center" mb={1}>
                   {[...Array(Math.floor(t.rating))].map((_, i) => (
