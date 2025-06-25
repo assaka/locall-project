@@ -8,7 +8,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
-import SettingsIcon from '@mui/icons-material/Settings';
 
 export default function WorkspaceSettings({ workspaceId, open, setOpen }: { workspaceId: string, open: boolean, setOpen: (open: boolean) => void }) {
   const [name, setName] = useState("");

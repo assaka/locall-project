@@ -59,8 +59,14 @@ export async function POST(request: Request) {
       to: phone,
     });
     return NextResponse.json({ success: true, sid: sms.sid });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    let message = 'Failed to send SMS.';
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'object' && error && 'message' in error) {
+      message = String((error as { message: unknown }).message);
+    }
     console.error('Twilio SMS Error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to send SMS.' }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

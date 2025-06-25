@@ -17,7 +17,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
 const adminEmail = process.env.ADMIN_EMAIL || '';
 
 export async function POST(request: Request) {
-  const { from, to, workspace_id, number_id, agency_id, user_id, visitor_id } = await request.json();
+  const { from, to, workspace_id, user_id, visitor_id } = await request.json();
 
   try {
     const call = await client.calls.create({
@@ -61,8 +61,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ sid: call.sid });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    let message = 'Twilio Call Error';
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (typeof error === 'object' && error && 'message' in error) {
+      message = String((error as { message: unknown }).message);
+    }
     console.error('Twilio Call Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

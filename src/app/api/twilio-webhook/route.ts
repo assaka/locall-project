@@ -29,8 +29,14 @@ export async function POST(request: Request) {
     }
 
     return new Response('OK', { status: 200 });
-  } catch (err: any) {
+  } catch (err: unknown) {
+    let message = 'Twilio webhook error';
+    if (err instanceof Error) {
+      message = err.message;
+    } else if (typeof err === 'object' && err && 'message' in err) {
+      message = String((err as { message: unknown }).message);
+    }
     console.error('Twilio webhook error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 
