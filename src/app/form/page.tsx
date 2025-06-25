@@ -18,7 +18,6 @@ function FormPageContent() {
   const searchParams = useSearchParams();
   const fromParam = searchParams.get("from");
   const workspaceIdParam = searchParams.get("workspace_id");
-  const agencyIdParam = searchParams.get("agency_id");
   const formNameParam = searchParams.get("form_name") || "Contact Form";
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -38,7 +37,6 @@ function FormPageContent() {
         message,
         from: fromParam,
         workspace_id: workspaceIdParam,
-        agency_id: agencyIdParam,
         user_id: user_id,
         form_name: formNameParam,
         visitor_id,

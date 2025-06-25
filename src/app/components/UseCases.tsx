@@ -37,18 +37,6 @@ const useCases = [
     link: "#casestudy-ecom",
     linkText: "Read case study",
   },
-  {
-    icon: <TrackChangesIcon fontSize="large" color="primary" />,
-    title: "Marketing Agencies",
-    description: "Agencies use LoCall to:",
-    features: [
-      "Prove ROI to clients with call tracking",
-      "Manage multiple clients in one dashboard",
-      "Automate lead nurturing workflows",
-    ],
-    link: "#casestudy-agency",
-    linkText: "Read case study",
-  },
 ];
 
 export default function UseCases() {

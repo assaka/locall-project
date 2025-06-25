@@ -12,21 +12,16 @@ import HomeIcon from '@mui/icons-material/Home';
 import Link from "next/link";
 
 export default function BookingPage() {
-  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; agency_id: string; booking_link?: string | null }[]>([]);
-  const [agencies, setAgencies] = useState<{ id: string; name: string; booking_link?: string | null }[]>([]);
+  const [workspaces, setWorkspaces] = useState<{ id: string; name: string; booking_link?: string | null }[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
-  const [selectedAgency, setSelectedAgency] = useState<string>("");
   const [bookingLink, setBookingLink] = useState<string>("https://calendly.com/your-calendly-username/demo-meeting");
 
   useEffect(() => {
     const fetchData = async () => {
-      const agencyRes = await supabase.from('agencies').select('id, name, booking_link');
-      const workspaceRes = await supabase.from('workspaces').select('id, name, agency_id, booking_link');
-      if (agencyRes.data) setAgencies(agencyRes.data);
+      const workspaceRes = await supabase.from('workspaces').select('id, name, booking_link');
       if (workspaceRes.data) setWorkspaces(workspaceRes.data);
       if (workspaceRes.data && workspaceRes.data.length > 0 && !selectedWorkspace) {
         setSelectedWorkspace(workspaceRes.data[0].id);
-        setSelectedAgency(workspaceRes.data[0].agency_id);
       }
     };
     fetchData();
@@ -37,14 +32,9 @@ export default function BookingPage() {
     if (ws && ws.booking_link) {
       setBookingLink(ws.booking_link);
     } else {
-      const ag = agencies.find(a => a.id === selectedAgency);
-      if (ag && ag.booking_link) {
-        setBookingLink(ag.booking_link);
-      } else {
-        setBookingLink("https://calendly.com/edwardp-dev2025/30min");
-      }
+      setBookingLink("https://calendly.com/edwardp-dev2025/30min");
     }
-  }, [selectedWorkspace, selectedAgency, workspaces, agencies]);
+  }, [selectedWorkspace, workspaces]);
 
   return (
     <Box sx={{ minHeight: "80vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: "white", py: { xs: 6, md: 10 } }}>
@@ -72,27 +62,10 @@ export default function BookingPage() {
             labelId="workspace-label"
             label="Workspace"
             value={selectedWorkspace}
-            onChange={e => {
-              setSelectedWorkspace(e.target.value);
-              const ws = workspaces.find(w => w.id === e.target.value);
-              if (ws) setSelectedAgency(ws.agency_id);
-            }}
+            onChange={e => setSelectedWorkspace(e.target.value)}
           >
             {workspaces.map(ws => (
               <MenuItem key={ws.id} value={ws.id}>{ws.name}</MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-          <InputLabel id="agency-label">Agency</InputLabel>
-          <Select
-            labelId="agency-label"
-            label="Agency"
-            value={selectedAgency}
-            onChange={e => setSelectedAgency(e.target.value)}
-          >
-            {agencies.map(ag => (
-              <MenuItem key={ag.id} value={ag.id}>{ag.name}</MenuItem>
             ))}
           </Select>
         </FormControl>

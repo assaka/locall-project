@@ -55,7 +55,7 @@ export default function AuthPage() {
       if (user) {
         const { data, error } = await supabase
           .from('users')
-          .select('workspace_id, agency_id')
+          .select('workspace_id')
           .eq('id', user.id)
           .single();
         if (!error && data) {
