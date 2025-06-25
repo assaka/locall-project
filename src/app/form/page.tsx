@@ -5,6 +5,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useSearchParams } from "next/navigation";
 import { supabase } from "@/app/utils/supabaseClient";
+import { getVisitorId } from "@/app/utils/visitorId";
 
 const FormPage: React.FC = () => {
   const [name, setName] = useState("");
@@ -28,6 +29,7 @@ const FormPage: React.FC = () => {
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
+    const visitor_id = getVisitorId();
     const res = await fetch("/api/form-submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -40,6 +42,7 @@ const FormPage: React.FC = () => {
         agency_id: agencyIdParam,
         user_id: user_id,
         form_name: formNameParam,
+        visitor_id,
       }),
     });
     const data = await res.json();
