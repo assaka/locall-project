@@ -1,17 +1,16 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container, MenuItem, Select, FormControl, InputLabel } from '@mui/material';
+import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import CallIcon from '@mui/icons-material/Call';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { supabase } from '@/app/utils/supabaseClient';
 import { getVisitorId } from "@/app/utils/visitorId";
 
-const CallPage: React.FC = () => {
+function CallPageContent() {
   const searchParams = useSearchParams();
   const fromParam = searchParams.get("from");
   const workspaceIdParam = searchParams.get("workspace_id");
-  const [from, setFrom] = useState(fromParam || "");
   const [to, setTo] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -28,7 +27,7 @@ const CallPage: React.FC = () => {
     const res = await fetch("/api/twilio-call", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, user_id, workspace_id: workspaceIdParam, visitor_id }),
+      body: JSON.stringify({ from: fromParam, to, user_id, workspace_id: workspaceIdParam, visitor_id }),
     });
     const data = await res.json();
     setLoading(false);
@@ -80,6 +79,12 @@ const CallPage: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
-export default CallPage; 
+export default function CallPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CallPageContent />
+    </Suspense>
+  );
+}

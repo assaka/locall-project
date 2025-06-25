@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { supabase } from "@/app/utils/supabaseClient";
 import { getVisitorId } from "@/app/utils/visitorId";
 
-const FormPage: React.FC = () => {
+function FormPageContent() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
@@ -118,6 +118,12 @@ const FormPage: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
-export default FormPage;
+export default function FormPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <FormPageContent />
+    </Suspense>
+  );
+}

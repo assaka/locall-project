@@ -133,20 +133,23 @@ const PurchasePage: React.FC = () => {
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle1" fontWeight={600} mb={2}>Available Numbers:</Typography>
               <List sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                {numbers.map((num: any) => (
-                  <ListItem key={num.phoneNumber} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
-                    <Typography fontFamily="monospace" fontSize={18}>{num.phoneNumber}</Typography>
-                    <Button
-                      variant="contained"
-                      color={buying === num.phoneNumber ? "inherit" : "primary"}
-                      onClick={() => handleBuy(num.phoneNumber)}
-                      disabled={buying === num.phoneNumber}
-                      sx={{ ml: 2, fontWeight: 700 }}
-                    >
-                      {buying === num.phoneNumber ? <CircularProgress size={20} color="inherit" /> : "Buy"}
-                    </Button>
-                  </ListItem>
-                ))}
+                {numbers.map((num) => {
+                  const n = num as { phoneNumber: string };
+                  return (
+                    <ListItem key={n.phoneNumber} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
+                      <Typography fontFamily="monospace" fontSize={18}>{n.phoneNumber}</Typography>
+                      <Button
+                        variant="contained"
+                        color={buying === n.phoneNumber ? "inherit" : "primary"}
+                        onClick={() => handleBuy(n.phoneNumber)}
+                        disabled={buying === n.phoneNumber}
+                        sx={{ ml: 2, fontWeight: 700 }}
+                      >
+                        {buying === n.phoneNumber ? <CircularProgress size={20} color="inherit" /> : "Buy"}
+                      </Button>
+                    </ListItem>
+                  );
+                })}
               </List>
             </Box>
           )}
