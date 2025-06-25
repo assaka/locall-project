@@ -3,7 +3,12 @@ create table if not exists agencies (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
   created_at timestamp with time zone default now(),
-  booking_link TEXT
+  booking_link TEXT,
+  logo_url TEXT, -- Whitelabel logo
+  primary_color TEXT, -- Whitelabel primary color
+  text_color TEXT, -- Whitelabel text color
+  custom_domain TEXT, -- Whitelabel custom domain
+  support_email TEXT -- Whitelabel support email
 );
 
 -- Workspaces

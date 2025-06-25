@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { supabase } from '@/app/utils/supabaseClient';
+import sgMail from '@sendgrid/mail';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -12,12 +13,15 @@ if (!accountSid || !authToken) {
 
 const client = twilio(accountSid, authToken);
 
+sgMail.setApiKey(process.env.SENDGRID_API_KEY || '');
+const adminEmail = process.env.ADMIN_EMAIL || '';
+
 export async function POST(request: Request) {
-  const { from, to, workspace_id, number_id, agency_id, user_id } = await request.json();
+  const { from, to, workspace_id, number_id, agency_id, user_id, visitor_id } = await request.json();
 
   try {
     const call = await client.calls.create({
-      url: 'http://demo.twilio.com/docs/voice.xml',
+      url: `${baseUrl}/api/twilio-voice?to=${encodeURIComponent(to)}`,
       to,
       from,
       statusCallback: `${baseUrl}/api/twilio-webhook`,
@@ -31,14 +35,26 @@ export async function POST(request: Request) {
         twilio_sid: call.sid,
         from_number: from,
         to_number: to,
-        // number_id: 'bb52619a-06b5-47e5-b109-a25e4b6e83c0',
         user_id,
+        visitor_id: visitor_id || null,
         workspace_id,
-        // agency_id: 'bb52619a-06b5-47e5-b109-a25e4b6e83c0',
         direction: 'outbound',
         status: 'initiated',
         started_at: new Date().toISOString()
       }]);
+
+    if (!dbError && adminEmail && process.env.SENDGRID_API_KEY) {
+      try {
+        await sgMail.send({
+          to: adminEmail,
+          from: adminEmail,
+          subject: 'New Call Initiated',
+          text: `A new call was initiated.\nFrom: ${from}\nTo: ${to}\nWorkspace: ${workspace_id}\nUser: ${user_id}\nTime: ${new Date().toLocaleString()}`,
+        });
+      } catch (err) {
+        console.error('SendGrid Email Error:', err);
+      }
+    }
 
     if (dbError) {
       return NextResponse.json({ error: dbError.message }, { status: 500 });

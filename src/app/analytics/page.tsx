@@ -92,7 +92,6 @@ export default function AnalyticsPage() {
         </Box>
       ) : (
         <>
-          {/* Summary Cards */}
           <Box display="flex" justifyContent="center" gap={3} mb={4}>
             {summary.map((s, i) => (
               <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
@@ -104,7 +103,6 @@ export default function AnalyticsPage() {
               </Card>
             ))}
           </Box>
-          {/* Funnel Visualization */}
           <Box mb={4} textAlign="center">
             <Typography variant="h6" fontWeight={700} mb={2}>Conversion Funnel</Typography>
             <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
@@ -124,7 +122,6 @@ export default function AnalyticsPage() {
               </Box>
             </Box>
           </Box>
-          {/* Timeline of Recent Events */}
           <Box>
             <Typography variant="h6" fontWeight={700} mb={2}>Recent Activity Timeline</Typography>
             <Box>

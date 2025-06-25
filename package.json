@@ -16,6 +16,7 @@
     "@mui/system": "^7.1.1",
     "@mui/types": "^7.4.3",
     "@prisma/client": "^6.10.1",
+    "@sendgrid/mail": "^8.1.5",
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.50.0",
@@ -23,6 +24,7 @@
     "prisma": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "recharts": "^3.0.0",
     "twilio": "^5.7.1"
   },
   "devDependencies": {
