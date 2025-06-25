@@ -43,14 +43,14 @@ export async function POST(request: Request) {
           return NextResponse.json({ error: dbError.message }, { status: 500 });
         }
         return NextResponse.json({ purchased });
-      } catch (buyError) {
-        console.error('Twilio Buy Error:', buyError);
-        return NextResponse.json({ error: (buyError as any).message || 'Failed to purchase number.' }, { status: 500 });
+      } catch (err: unknown) {
+        console.error('Twilio Buy Error:', err);
+        return NextResponse.json({ error: (err as Error)?.message || 'Failed to purchase number.' }, { status: 500 });
       }
     }
     return NextResponse.json({ error: 'Missing search or buy parameter' }, { status: 400 });
-  } catch (error: any) {
-    console.error("Twilio API Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (err: unknown) {
+    console.error("Twilio API Error:", err);
+    return NextResponse.json({ error: (err as Error)?.message || 'An error occurred' }, { status: 500 });
   }
 }
