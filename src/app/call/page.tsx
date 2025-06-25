@@ -5,6 +5,7 @@ import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgres
 import CallIcon from '@mui/icons-material/Call';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { supabase } from '@/app/utils/supabaseClient';
+import { getVisitorId } from "@/app/utils/visitorId";
 
 const CallPage: React.FC = () => {
   const searchParams = useSearchParams();
@@ -23,10 +24,11 @@ const CallPage: React.FC = () => {
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
+    const visitor_id = getVisitorId();
     const res = await fetch("/api/twilio-call", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, user_id, workspace_id: workspaceIdParam }),
+      body: JSON.stringify({ from, to, user_id, workspace_id: workspaceIdParam, visitor_id }),
     });
     const data = await res.json();
     setLoading(false);

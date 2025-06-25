@@ -41,7 +41,7 @@ export default function BookingPage() {
       if (ag && ag.booking_link) {
         setBookingLink(ag.booking_link);
       } else {
-        setBookingLink("https://calendly.com/your-calendly-username/demo-meeting");
+        setBookingLink("https://calendly.com/edwardp-dev2025/30min");
       }
     }
   }, [selectedWorkspace, selectedAgency, workspaces, agencies]);
