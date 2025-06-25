@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       statusCallback: `${baseUrl}/api/twilio-webhook`,
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
       statusCallbackMethod: 'POST',
+      record: true,
     });
 
     const { error: dbError } = await supabase
