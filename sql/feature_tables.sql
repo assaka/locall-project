@@ -35,5 +35,7 @@ CREATE TABLE form_submissions (
   data jsonb NOT NULL,                     
   source text,
   ip_address text,
-  user_agent text                          
+  user_agent text,
+  from_number text,
+  to_number text
 );
