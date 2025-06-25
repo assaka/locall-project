@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     source,
     ip_address,
     user_agent,
-    from
+    from,
+    visitor_id
   } = await request.json();
 
   if (!phone || !workspace_id || !form_name) {
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
         workspace_id,
         agency_id: agency_id || null,
         user_id: user_id || null,
+        visitor_id: visitor_id || null,
         form_name,
         data: { name, phone, message },
         source: source || null,

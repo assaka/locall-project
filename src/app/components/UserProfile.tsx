@@ -30,9 +30,7 @@ export default function UserProfile({ open, setOpen }: { open: boolean; setOpen:
   const handleSave = async () => {
     setLoading(true);
     setStatus(null);
-    // Update Supabase Auth user metadata
     const { error: authError } = await supabase.auth.updateUser({ data: { name } });
-    // Update users table as well
     const { data: { user } } = await supabase.auth.getUser();
     let dbError = null;
     if (user) {
@@ -73,4 +71,4 @@ export default function UserProfile({ open, setOpen }: { open: boolean; setOpen:
       </DialogActions>
     </Dialog>
   );
-} 
+}

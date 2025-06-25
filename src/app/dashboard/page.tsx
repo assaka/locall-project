@@ -24,13 +24,11 @@ import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import Button from "@mui/material/Button";
-import HomeIcon from "@mui/icons-material/Home";
 import Link from "next/link";
 import MenuItem from '@mui/material/MenuItem';
 import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
-import Paper from '@mui/material/Paper';
 import Divider from '@mui/material/Divider';
 import BusinessIcon from '@mui/icons-material/Business';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -43,6 +41,12 @@ import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 import EventIcon from '@mui/icons-material/Event';
 import PersonIcon from '@mui/icons-material/Person';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 interface NumberRow {
   id: string;
@@ -92,6 +96,14 @@ export default function DashboardPage() {
   const [membersTabLoading, setMembersTabLoading] = useState(false);
   const [notLoggedIn, setNotLoggedIn] = useState(false);
   const [selectedUser, setSelectedUser] = useState<string>("all");
+  const [agencyBranding, setAgencyBranding] = useState<{ logo_url?: string; primary_color?: string; text_color?: string }>({});
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteCallId, setNoteCallId] = useState<string | null>(null);
+  const [noteMessage, setNoteMessage] = useState('');
+  const [noteType, setNoteType] = useState('note');
+  const [callEvents, setCallEvents] = useState<Record<string, any[]>>({});
+  const [profileTabVisitorId, setProfileTabVisitorId] = useState('');
+  const [profileTabEvents, setProfileTabEvents] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchWorkspacesAndAgencies = async () => {
@@ -101,7 +113,7 @@ export default function DashboardPage() {
         return;
       }
       await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
-      const agencyRes = await supabase.from('agencies').select('id, name');
+      const agencyRes = await supabase.from('agencies').select('id, name, logo_url, primary_color, text_color');
       const workspaceRes = await supabase.from('workspaces').select('id, name, agency_id');
       if (agencyRes.data) setAgencies(agencyRes.data);
       if (workspaceRes.data) {
@@ -111,9 +123,19 @@ export default function DashboardPage() {
           setSelectedAgency(workspaceRes.data[0].agency_id);
         }
       }
+      if (selectedAgency && agencyRes.data) {
+        const agency = agencyRes.data.find((a: any) => a.id === selectedAgency);
+        if (agency) {
+          setAgencyBranding({
+            logo_url: agency.logo_url,
+            primary_color: agency.primary_color,
+            text_color: agency.text_color,
+          });
+        }
+      }
     };
     fetchWorkspacesAndAgencies();
-  }, []);
+  }, [selectedAgency]);
 
   useEffect(() => {
     if (!selectedWorkspace) return;
@@ -159,6 +181,20 @@ export default function DashboardPage() {
     }
   }, [tab, selectedWorkspace]);
 
+  useEffect(() => {
+    const fetchEvents = async () => {
+      const eventsMap: Record<string, any[]> = {};
+      for (const call of calls) {
+        if (call.id) {
+          const { data } = await supabase.from('calls').select('events').eq('id', call.id).single();
+          eventsMap[call.id] = data?.events || [];
+        }
+      }
+      setCallEvents(eventsMap);
+    };
+    if (calls.length > 0) fetchEvents();
+  }, [calls]);
+
   const handleInvite = async () => {
     setInviteStatus(null);
     const { error } = await supabase.from('invitations').insert({ email: inviteEmail, workspace_id: selectedWorkspace });
@@ -186,6 +222,68 @@ export default function DashboardPage() {
     { label: "Forms", value: forms.length, icon: <AssignmentIndIcon color="warning" /> },
   ];
 
+  const handleOpenNoteDialog = (callId: string) => {
+    setNoteCallId(callId);
+    setNoteMessage('');
+    setNoteType('note');
+    setNoteDialogOpen(true);
+  };
+
+  const handleCloseNoteDialog = () => {
+    setNoteDialogOpen(false);
+    setNoteCallId(null);
+    setNoteMessage('');
+  };
+
+  const handleAddNote = async () => {
+    if (!noteCallId || !noteMessage) return;
+    await fetch('/api/call-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call_id: noteCallId, type: noteType, message: noteMessage }),
+    });
+    handleCloseNoteDialog();
+    const { data } = await supabase.from('calls').select('events').eq('id', noteCallId).single();
+    setCallEvents(prev => ({ ...prev, [noteCallId]: data?.events || [] }));
+  };
+
+  const getCountsByDay = (items: { created_at?: string; submitted_at?: string }[], key: 'created_at' | 'submitted_at') => {
+    const counts: Record<string, number> = {};
+    const today = new Date();
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = d.toISOString().slice(0, 10);
+      counts[dateStr] = 0;
+    }
+    items.forEach(item => {
+      const dateStr = (item[key] || '').slice(0, 10);
+      if (dateStr in counts) counts[dateStr]++;
+    });
+    return Object.entries(counts).map(([date, count]) => ({ date, count }));
+  };
+  const callsByDay = getCountsByDay(calls, 'created_at');
+  const formsByDay = getCountsByDay(forms, 'submitted_at');
+  const topNumbers = Object.entries(
+    calls.reduce((acc, c) => {
+      acc[c.from_number] = (acc[c.from_number] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  ).map(([number, count]) => ({ number, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+  const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#8dd1e1'];
+
+  const handleSearchProfile = async () => {
+    if (!profileTabVisitorId) return;
+    const { data: callData } = await supabase.from('calls').select('*').eq('visitor_id', profileTabVisitorId).order('created_at', { ascending: false });
+    const { data: formData } = await supabase.from('form_submissions').select('*').eq('visitor_id', profileTabVisitorId).order('submitted_at', { ascending: false });
+    setProfileTabEvents([
+      ...(callData || []),
+      ...(formData || [])
+    ].sort((a, b) => new Date('submitted_at' in b ? b.submitted_at : b.created_at).getTime() - new Date('submitted_at' in a ? a.submitted_at : a.created_at).getTime()));
+  };
+
   if (notLoggedIn) {
     return (
       <Snackbar open={true} anchorOrigin={{ vertical: 'top', horizontal: 'center' }}>
@@ -197,7 +295,22 @@ export default function DashboardPage() {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 8 }}>
+    <Container maxWidth="xl" sx={{ py: 8, background: agencyBranding.primary_color || undefined, color: agencyBranding.text_color || undefined }}>
+      <Box display="flex" alignItems="center" mb={2} gap={2}>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<ArrowBackIcon />}
+          component={Link}
+          href="/"
+          sx={{ minWidth: 0, px: 2 }}
+        >
+          Back to Home
+        </Button>
+        {agencyBranding.logo_url && (
+          <img src={agencyBranding.logo_url} alt="Agency Logo" style={{ height: 48, borderRadius: 8 }} />
+        )}
+      </Box>
       <Box display="flex" flexDirection="column" alignItems="center">
         <Typography variant="h3" fontWeight={900} align="center" gutterBottom>
           Welcome to Smart Dashboard
@@ -290,6 +403,7 @@ export default function DashboardPage() {
               <Tab icon={<TimelineIcon />} label="Analytics" />
               <Tab icon={<GroupIcon />} label="Members" />
               <Tab icon={<EventIcon />} label="Appointments" />
+              <Tab icon={<PersonIcon />} label="User Profiles" />
             </Tabs>
             <CardContent>
               <Box mb={2} display="flex" alignItems="center" justifyContent="space-between" gap={2}>
@@ -386,12 +500,14 @@ export default function DashboardPage() {
                         <TableCell>Duration</TableCell>
                         <TableCell>Recording</TableCell>
                         <TableCell>Time</TableCell>
+                        <TableCell>Events/Notes</TableCell>
+                        <TableCell>Add Note</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {filteredCalls.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={6} align="center" sx={{ color: 'text.disabled', py: 6 }}>
+                          <TableCell colSpan={8} align="center" sx={{ color: 'text.disabled', py: 6 }}>
                             <InfoOutlinedIcon sx={{ mb: 1 }} />
                             <br />No data found.
                           </TableCell>
@@ -426,6 +542,24 @@ export default function DashboardPage() {
                               ) : '-'}
                             </TableCell>
                             <TableCell>{new Date(call.created_at).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Box>
+                                {(callEvents[call.id] || []).map((event, i) => (
+                                  <Box key={i} mb={1}>
+                                    <Chip label={event.type} size="small" sx={{ mr: 1 }} />
+                                    <Typography component="span" fontSize={13}>{event.message}</Typography>
+                                    <Typography component="span" color="text.secondary" fontSize={11} sx={{ ml: 1 }}>
+                                      {new Date(event.timestamp).toLocaleString()}
+                                    </Typography>
+                                  </Box>
+                                ))}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Button size="small" variant="outlined" onClick={() => handleOpenNoteDialog(call.id)}>
+                                Add Note
+                              </Button>
+                            </TableCell>
                           </TableRow>
                         ))
                       )}
@@ -461,60 +595,67 @@ export default function DashboardPage() {
               )}
               {tab === 3 && (
                 <Box>
-                  {/* Summary Cards */}
-                  <Box display="flex" justifyContent="center" gap={3} mb={4}>
-                    {summary.map((s, i) => (
-                      <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
-                        {s.icon}
-                        <Box>
-                          <Typography fontWeight={700} fontSize={22}>{s.value}</Typography>
-                          <Typography fontSize={14} color="text.secondary">{s.label}</Typography>
-                        </Box>
-                      </Card>
-                    ))}
-                  </Box>
-                  <Box mb={4} textAlign="center">
-                    <Typography variant="h6" fontWeight={700} mb={2}>Conversion Funnel</Typography>
-                    <Box display="flex" alignItems="center" justifyContent="center" gap={2}>
-                      <Box>
-                        <Typography fontWeight={700} color="primary.main">{numbers.length}</Typography>
-                        <Typography fontSize={14}>Numbers</Typography>
-                      </Box>
-                      <Box sx={{ width: 40, height: 4, bgcolor: 'primary.main', borderRadius: 2 }} />
-                      <Box>
-                        <Typography fontWeight={700} color="success.main">{calls.length}</Typography>
-                        <Typography fontSize={14}>Calls</Typography>
-                      </Box>
-                      <Box sx={{ width: 40, height: 4, bgcolor: 'success.main', borderRadius: 2 }} />
-                      <Box>
-                        <Typography fontWeight={700} color="warning.main">{forms.length}</Typography>
-                        <Typography fontSize={14}>Forms</Typography>
-                      </Box>
+                  <Typography variant="h6" fontWeight={700} mb={2}>Analytics</Typography>
+                  <Box display="flex" gap={4} flexWrap="wrap" mb={4}>
+                    <Box flex={1} minWidth={320}>
+                      <Typography fontWeight={600} mb={1}>Calls per Day (7d)</Typography>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={callsByDay}>
+                          <XAxis dataKey="date" fontSize={12} />
+                          <YAxis allowDecimals={false} fontSize={12} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#8884d8" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Box flex={1} minWidth={320}>
+                      <Typography fontWeight={600} mb={1}>Forms per Day (7d)</Typography>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <BarChart data={formsByDay}>
+                          <XAxis dataKey="date" fontSize={12} />
+                          <YAxis allowDecimals={false} fontSize={12} />
+                          <RechartsTooltip />
+                          <Bar dataKey="count" fill="#82ca9d" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                    <Box flex={1} minWidth={320}>
+                      <Typography fontWeight={600} mb={1}>Top Numbers (by Calls)</Typography>
+                      <ResponsiveContainer width="100%" height={200}>
+                        <PieChart>
+                          <Pie data={topNumbers} dataKey="count" nameKey="number" cx="50%" cy="50%" outerRadius={60} label>
+                            {topNumbers.map((entry, idx) => (
+                              <Cell key={`cell-${idx}`} fill={COLORS[idx % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Legend />
+                          <RechartsTooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </Box>
                   </Box>
+                  <Divider sx={{ my: 3 }} />
+                  <Typography variant="h6" fontWeight={700} mb={2}>User Journey Timeline</Typography>
                   <Box>
-                    <Typography variant="h6" fontWeight={700} mb={2}>Recent Activity Timeline</Typography>
-                    <Box>
-                      {[...calls, ...forms]
-                        .sort((a, b) => 
-                          new Date("submitted_at" in b ? b.submitted_at : b.created_at).getTime() -
-                          new Date("submitted_at" in a ? a.submitted_at : a.created_at).getTime()
-                        )
-                        .slice(0, 10)
-                        .map((event, idx) => (
-                          <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
-                            <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
-                            <Typography fontWeight={600}>
-                              {"from_number" in event
-                                ? `${event.from_number} → ${event.to_number}`
-                                : (event as FormSubmission).form_name || (event as FormSubmission).data.phone}
-                            </Typography>
-                            <Typography color="text.secondary" fontSize={13}>
-                              {new Date("submitted_at" in event ? event.submitted_at : event.created_at).toLocaleString()}
-                            </Typography>
-                          </Box>
-                        ))}
-                    </Box>
+                    {[...calls, ...forms]
+                      .sort((a, b) =>
+                        new Date('submitted_at' in b ? b.submitted_at : b.created_at).getTime() -
+                        new Date('submitted_at' in a ? a.submitted_at : a.created_at).getTime()
+                      )
+                      .slice(0, 20)
+                      .map((event, idx) => (
+                        <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
+                          <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
+                          <Typography fontWeight={600}>
+                            {"from_number" in event
+                              ? `${event.from_number} → ${event.to_number}`
+                              : (event as FormSubmission).form_name || (event as FormSubmission).data.phone}
+                          </Typography>
+                          <Typography color="text.secondary" fontSize={13}>
+                            {new Date("submitted_at" in event ? event.submitted_at : event.created_at).toLocaleString()}
+                          </Typography>
+                        </Box>
+                      ))}
                   </Box>
                 </Box>
               )}
@@ -539,8 +680,6 @@ export default function DashboardPage() {
                       )}
                     </Box>
                   )}
-                  {/* Invite form (show only if admin) */}
-                  {/* TODO: Replace session.user.id with actual user id from auth context */}
                   {true && (
                     <Box component="form" onSubmit={e => { e.preventDefault(); handleInvite(); }} display="flex" gap={2} alignItems="center">
                       <TextField
@@ -569,10 +708,70 @@ export default function DashboardPage() {
                   />
                 </Box>
               )}
+              {tab === 6 && (
+                <Box>
+                  <Typography variant="h6" fontWeight={700} mb={2}>User Profile Lookup</Typography>
+                  <Box display="flex" gap={2} mb={2}>
+                    <TextField
+                      size="small"
+                      label="Visitor ID"
+                      value={profileTabVisitorId}
+                      onChange={e => setProfileTabVisitorId(e.target.value)}
+                      sx={{ width: 320 }}
+                    />
+                    <Button variant="contained" onClick={handleSearchProfile} startIcon={<SearchIcon />}>Search</Button>
+                  </Box>
+                  {profileTabEvents.length === 0 ? (
+                    <Typography color="text.secondary">No events found for this visitor ID.</Typography>
+                  ) : (
+                    <Box>
+                      {profileTabEvents.map((event, idx) => (
+                        <Box key={event.id} display="flex" alignItems="center" gap={2} mb={1}>
+                          <Chip label={"from_number" in event ? "Call" : "Form"} color={"from_number" in event ? "success" : "warning"} size="small" />
+                          <Typography fontWeight={600}>
+                            {"from_number" in event
+                              ? `${event.from_number} → ${event.to_number}`
+                              : (event as FormSubmission).form_name || (event as FormSubmission).data?.phone}
+                          </Typography>
+                          <Typography color="text.secondary" fontSize={13}>
+                            {new Date("submitted_at" in event ? event.submitted_at : event.created_at).toLocaleString()}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              )}
             </CardContent>
           </Card>
         </Box>
       </Box>
+      <Dialog open={noteDialogOpen} onClose={handleCloseNoteDialog}>
+        <DialogTitle>Add Note/Event</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Type</InputLabel>
+            <Select value={noteType} label="Type" onChange={e => setNoteType(e.target.value)}>
+              <MenuItem value="note">Note</MenuItem>
+              <MenuItem value="event">Event</MenuItem>
+              <MenuItem value="flag">Flag</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Message"
+            type="text"
+            fullWidth
+            value={noteMessage}
+            onChange={e => setNoteMessage(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseNoteDialog}>Cancel</Button>
+          <Button onClick={handleAddNote} variant="contained">Add</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }

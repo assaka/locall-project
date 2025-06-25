@@ -2,7 +2,6 @@ import { supabase } from "@/app/utils/supabaseClient";
 
 export async function acceptPendingInvitations(user: { id: string; email: string }) {
   if (!user.email) return;
-  // Find pending invitations for this email
   const { data: invites, error } = await supabase
     .from("invitations")
     .select("id, workspace_id, status")
@@ -19,4 +18,4 @@ export async function acceptPendingInvitations(user: { id: string; email: string
     });
     await supabase.from("invitations").update({ status: "accepted" }).eq("id", invite.id);
   }
-} 
+}

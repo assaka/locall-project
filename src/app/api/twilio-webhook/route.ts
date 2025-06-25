@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         duration: duration ? parseInt(duration) : null,
         recording_url: recordingUrl || null,
       })
-      .eq('sid', callSid);
+      .eq('twilio_sid', callSid);
 
     if (error) {
       console.error('Supabase update error:', error);
