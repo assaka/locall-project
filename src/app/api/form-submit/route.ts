@@ -4,9 +4,8 @@ import twilio from 'twilio';
 
 const accountSid = process.env.TWILIO_ACCOUNT_SID;
 const authToken = process.env.TWILIO_AUTH_TOKEN;
-const twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 
-if (!accountSid || !authToken || !twilioNumber) {
+if (!accountSid || !authToken) {
   throw new Error('Twilio credentials or phone number are not set in the environment variables.');
 }
 
@@ -55,7 +54,7 @@ export async function POST(request: Request) {
   try {
     const sms = await client.messages.create({
       body: `From ${name || 'Unknown'}: ${message || ''}`,
-      from: from || twilioNumber,
+      from: from,
       to: phone,
     });
     return NextResponse.json({ success: true, sid: sms.sid });
