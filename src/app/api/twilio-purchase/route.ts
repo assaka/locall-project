@@ -16,6 +16,8 @@ export async function POST(request: Request) {
   const body = await request.json();
   const { search, buy, workspace_id, agency_id } = body;
 
+  console.log("body", body);
+
   try {
     if (search) {
       const numbers = await client.availablePhoneNumbers('US').local.list({ areaCode: search });
@@ -24,9 +26,19 @@ export async function POST(request: Request) {
     if (buy) {
       try {
         const purchased = await client.incomingPhoneNumbers.create({ phoneNumber: buy });
+        const { user_id } = body;
         const { error: dbError } = await supabase
           .from('numbers')
-          .insert([{ phone_number: buy, workspace_id, agency_id }]);
+          .insert([{ 
+            twilio_sid: purchased.sid,
+            phone_number: buy,
+            user_id,
+            workspace_id,
+            agency_id,
+            purchased_at: new Date().toISOString(),
+            friendly_name: purchased.friendlyName,
+            is_active: true
+          }]);
         if (dbError) {
           return NextResponse.json({ error: dbError.message }, { status: 500 });
         }

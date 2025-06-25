@@ -3,10 +3,8 @@ import React, { useState, useEffect } from "react";
 import { Box, Typography, Card, Button, TextField, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import MenuItem from '@mui/material/MenuItem';
-import Select from '@mui/material/Select';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
+import { useSearchParams } from "next/navigation";
+import { supabase } from "@/app/utils/supabaseClient";
 
 const FormPage: React.FC = () => {
   const [name, setName] = useState("");
@@ -16,31 +14,33 @@ const FormPage: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [from, setFrom] = useState("");
-  const [numbers, setNumbers] = useState<{ phoneNumber: string; friendlyName: string }[]>([]);
-  const [numbersLoading, setNumbersLoading] = useState(true);
 
-  useEffect(() => {
-    (async () => {
-      setNumbersLoading(true);
-      const res = await fetch("/api/twilio-numbers");
-      const data = await res.json();
-      if (data.numbers && data.numbers.length > 0) {
-        setNumbers(data.numbers);
-        setFrom(data.numbers[0].phoneNumber);
-      }
-      setNumbersLoading(false);
-    })();
-  }, []);
+  const searchParams = useSearchParams();
+  const fromParam = searchParams.get("from");
+  const workspaceIdParam = searchParams.get("workspace_id");
+  const agencyIdParam = searchParams.get("agency_id");
+  const formNameParam = searchParams.get("form_name") || "Contact Form";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setStatus(null);
     setError("");
+    const { data: { user } } = await supabase.auth.getUser();
+    const user_id = user?.id;
     const res = await fetch("/api/form-submit", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, message, from }),
+      body: JSON.stringify({
+        name,
+        phone,
+        message,
+        from: fromParam,
+        workspace_id: workspaceIdParam,
+        agency_id: agencyIdParam,
+        user_id: user_id,
+        form_name: formNameParam,
+      }),
     });
     const data = await res.json();
     setLoading(false);
@@ -64,33 +64,17 @@ const FormPage: React.FC = () => {
           <Typography color="text.secondary" mb={4} sx={{ fontSize: 18 }}>
             Send a message and track submissions in real time.
           </Typography>
+          {fromParam ? (
+            <Box mb={2}>
+              <Typography variant="subtitle1" fontWeight={600}>
+                From: <span style={{ color: "#1976d2" }}>{fromParam}</span>
+              </Typography>
+            </Box>
+          ) : (
+            <Alert severity="warning">No source number selected. Please start from the dashboard.</Alert>
+          )}
           <form onSubmit={handleSubmit}>
             <Stack spacing={3} mb={2}>
-              {numbersLoading ? (
-                <Box display="flex" alignItems="center" justifyContent="center" minHeight={56}>
-                  <CircularProgress size={24} />
-                </Box>
-              ) : (
-                <FormControl fullWidth>
-                  <InputLabel id="from-label">From (Twilio Number)</InputLabel>
-                  <Select
-                    labelId="from-label"
-                    label="From (Twilio Number)"
-                    value={from}
-                    onChange={e => setFrom(e.target.value)}
-                    required
-                    displayEmpty
-                    sx={{ bgcolor: '#fff', borderRadius: 2 }}
-                    inputProps={{ 'aria-label': 'From (Twilio Number)' }}
-                  >
-                    {numbers.map(num => (
-                      <MenuItem key={num.phoneNumber} value={num.phoneNumber}>
-                        {num.phoneNumber} {num.friendlyName ? `(${num.friendlyName})` : ''}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
               <TextField
                 label="Name"
                 value={name}
@@ -120,7 +104,8 @@ const FormPage: React.FC = () => {
                 minRows={3}
                 sx={{ bgcolor: '#fff', borderRadius: 2 }}
               />
-              <Button type="submit" variant="contained" startIcon={<EditNoteIcon />} disabled={loading} sx={{ fontWeight: 700, px: 4, py: 1.5, borderRadius: 2 }}>
+              <input type="hidden" name="form_name" value={formNameParam} />
+              <Button type="submit" variant="contained" startIcon={<EditNoteIcon />} disabled={loading || !fromParam} sx={{ fontWeight: 700, px: 4, py: 1.5, borderRadius: 2 }}>
                 {loading ? <CircularProgress size={20} color="inherit" /> : "Submit"}
               </Button>
             </Stack>

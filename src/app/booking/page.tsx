@@ -48,7 +48,7 @@ export default function BookingPage() {
 
   return (
     <Box sx={{ minHeight: "80vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: "white", py: { xs: 6, md: 10 } }}>
-      <Box mb={3} alignSelf="flex-start">
+      <Box mb={3} alignSelf="flex-start" marginLeft={'15%'}>
         <Button
           component={Link}
           href="/"
