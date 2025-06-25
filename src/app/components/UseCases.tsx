@@ -10,7 +10,6 @@ import ListItemIcon from "@mui/material/ListItemIcon";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import BuildIcon from "@mui/icons-material/Build";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
-import TrackChangesIcon from "@mui/icons-material/TrackChanges";
 
 const useCases = [
   {
