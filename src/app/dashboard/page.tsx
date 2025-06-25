@@ -30,7 +30,6 @@ import Select from '@mui/material/Select';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Divider from '@mui/material/Divider';
-import BusinessIcon from '@mui/icons-material/Business';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import GroupIcon from '@mui/icons-material/Group';
@@ -47,7 +46,6 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import Image from 'next/image';
 
 interface NumberRow {
   id: string;
