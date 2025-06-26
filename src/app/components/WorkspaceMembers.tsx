@@ -17,7 +17,6 @@ import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 
-// Define a type for workspace member
 interface WorkspaceMember {
   user_id: string;
   users?: { email?: string };
