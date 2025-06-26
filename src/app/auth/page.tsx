@@ -72,6 +72,22 @@ function AuthPage() {
       setSuccess("If this email is not registered, you will receive a confirmation email. If you already have an account, please log in.");
       if (inviteId) {
         await supabase.from('invitations').update({ status: 'accepted' }).eq('id', inviteId);
+        const { data: invitation, error: invitationError } = await supabase
+          .from('invitations')
+          .select('workspace_id, invited_by')
+          .eq('id', inviteId)
+          .single();
+        if (!invitationError && invitation?.workspace_id) {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('workspace_members').insert({
+              user_id: user.id,
+              workspace_id: invitation.workspace_id,
+              role: 'member',
+              invited_by: invitation.invited_by,
+            });
+          }
+        }
       }
     }
   };

@@ -21,6 +21,8 @@ interface WorkspaceMember {
   user_id: string;
   users?: { email?: string };
   role: string;
+  invited_by?: string | null;
+  inviter?: { email?: string };
 }
 
 export default function WorkspaceMembers({ workspaceId, open, setOpen }: { workspaceId: string, open: boolean, setOpen: (open: boolean) => void }) {
@@ -33,11 +35,8 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
 
   const fetchMembers = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('workspace_members')
-      .select('id, role, user_id, users(email)')
-      .eq('workspace_id', workspaceId);
-    setMembers(data as WorkspaceMember[]);
+    const result = await supabase.from('workspace_members').select('id, role, user_id, users:users!workspace_members_user_id_fkey(name, email)').eq('workspace_id', workspaceId);
+    setMembers((result.data ?? []) as WorkspaceMember[]);
     setLoading(false);
   };
 
@@ -60,28 +59,32 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
 
   const handleInvite = async () => {
     setInviteStatus(null);
-    const { error } = await supabase.from('invitations').insert({ email: inviteEmail, workspace_id: workspaceId });
-    if (error) {
-      setInviteStatus('Failed to send invite.');
-    } else {
+    setLoading(true);
+    setInviteStatus(null);
+    try {
       const { data: ws } = await supabase.from('workspaces').select('name').eq('id', workspaceId).single();
-      const inviteLink = `${window.location.origin}/auth`;
-      console.log("inviteLink", inviteLink);
-      console.log("email", inviteEmail);
-      console.log("workspaceName", ws?.name);
-      await fetch('/api/send-invite-email', {
+      const { data: { user: inviter } } = await supabase.auth.getUser();
+      const res = await fetch('/api/send-invite-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: inviteEmail,
           workspaceName: ws?.name || 'LoCall',
-          inviteLink,
+          workspace_id: workspaceId,
+          invited_by: inviter?.id,
         }),
       });
-      setInviteStatus('Invitation sent!');
-      setInviteEmail("");
-      fetchMembers();
+      if (!res.ok) {
+        setInviteStatus('Failed to send invite.');
+      } else {
+        setInviteStatus('Invitation sent!');
+        setInviteEmail("");
+        fetchMembers();
+      }
+    } catch {
+      setInviteStatus('error');
     }
+    setLoading(false);
   };
 
   const handleRemove = async (userId: string) => {
@@ -122,7 +125,10 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
                       </>
                     ) : null
                   }>
-                    <ListItemText primary={m.users?.email} />
+                    <ListItemText
+                      primary={m.users?.email}
+                      secondary={m.inviter && m.inviter.email ? `Invited by: ${m.inviter.email}` : undefined}
+                    />
                     <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
                   </ListItem>
                 );
@@ -140,8 +146,8 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
               type="email"
               required
             />
-            <Button type="submit" variant="contained" color="primary">Invite</Button>
-            {inviteStatus && <Typography color="success.main" fontSize={14}>{inviteStatus}</Typography>}
+            <Button type="submit" variant="contained" color="primary" disabled={loading}>Invite</Button>
+            {inviteStatus && <Typography color={inviteStatus.includes('Failed') ? 'error.main' : 'success.main'} fontSize={14}>{inviteStatus}</Typography>}
           </form>
         )}
       </DialogContent>
