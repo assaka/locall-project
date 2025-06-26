@@ -392,7 +392,7 @@ export default function DashboardPage() {
                       color="primary"
                       size="small"
                       component={Link}
-                      href="/purchase"
+                      href={`/purchase?workspace_id=${selectedWorkspace}`}
                       startIcon={<AddIcCallIcon />}
                       sx={{ fontWeight: 700, px: 2, py: 0.5, borderRadius: 1, fontSize: 14, boxShadow: 1, minWidth: 0 }}
                     >
