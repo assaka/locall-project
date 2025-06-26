@@ -57,6 +57,13 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
     if (open) fetchUserRole();
   }, [open, workspaceId]);
 
+  useEffect(() => {
+    if (open && workspaceId) {
+      fetchMembers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, workspaceId]);
+
   const handleInvite = async () => {
     setInviteStatus(null);
     setLoading(true);

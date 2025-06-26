@@ -60,6 +60,7 @@ export default function Home() {
     }
     fetchUserAndWorkspace();
   }, []);
+
   return (
     <>
       <Box sx={{ width: "100%", bgcolor: "white", borderBottom: "1px solid #eee", py: 3, px: { xs: 2, md: 4 }, display: "flex", alignItems: "center", justifyContent: "center" }}>
