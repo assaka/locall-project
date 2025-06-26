@@ -15,7 +15,10 @@ import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
-import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import Divider from "@mui/material/Divider";
+import Tooltip from "@mui/material/Tooltip";
+import Box from "@mui/material/Box";
+import React from "react";
 
 interface WorkspaceMember {
   user_id: string;
@@ -95,13 +98,7 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
   };
 
   const handleRemove = async (userId: string) => {
-    await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', userId);
-    fetchMembers();
-  };
-
-  const handleChangeRole = async (userId: string, currentRole: string) => {
-    const newRole = currentRole === 'admin' ? 'member' : 'admin';
-    await supabase.from('workspace_members').update({ role: newRole }).eq('workspace_id', workspaceId).eq('user_id', userId);
+    await supabase.from('workspace_members').delete().eq('workspace_id', workspaceId).eq('user_id', userId).eq('role', 'member');
     fetchMembers();
   };
 
@@ -116,33 +113,50 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
             {members.length === 0 ? (
               <Typography color="text.secondary">No members found.</Typography>
             ) : (
-              members.map((m) => {
+              members.map((m, idx) => {
                 const isSelf = m.user_id === currentUserId;
                 const isOnlyAdmin = m.role === 'admin' && members.filter(mem => mem.role === 'admin').length === 1;
                 return (
-                  <ListItem key={m.user_id} secondaryAction={
-                    currentUserRole === 'admin' && !isSelf ? (
-                      <>
-                        <IconButton edge="end" aria-label="change-role" onClick={() => handleChangeRole(m.user_id, m.role)}>
-                          <SwapHorizIcon />
-                        </IconButton>
-                        <IconButton edge="end" aria-label="remove" onClick={() => handleRemove(m.user_id)} disabled={isOnlyAdmin}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </>
-                    ) : null
-                  }>
-                    <ListItemText
-                      primary={m.users?.email}
-                      secondary={m.inviter && m.inviter.email ? `Invited by: ${m.inviter.email}` : undefined}
-                    />
-                    <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
-                  </ListItem>
+                  <React.Fragment key={m.user_id}>
+                    <ListItem
+                      alignItems="center"
+                      sx={{ display: 'flex', gap: 2, py: 1 }}
+                      secondaryAction={null}
+                    >
+                      <Typography fontWeight={600} sx={{ minWidth: 28 }}>{idx + 1}.</Typography>
+                      <ListItemText
+                        primary={<>
+                          {m.users && 'name' in m.users && m.users.name ? (
+                            <>{m.users.name} <Typography component="span" color="text.secondary" fontSize={13}>({m.users.email})</Typography></>
+                          ) : (
+                            m.users?.email || m.user_id
+                          )}
+                          {isSelf && <Typography component="span" color="primary.main" fontWeight={700} fontSize={13} sx={{ ml: 1 }}>(You)</Typography>}
+                        </>}
+                        secondary={m.inviter && m.inviter.email ? `Invited by: ${m.inviter.email}` : undefined}
+                        sx={{ minWidth: 0, flex: 1 }}
+                      />
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" sx={{ minWidth: 64, textTransform: 'capitalize' }} />
+                        {currentUserRole === 'admin' && !isSelf && (
+                          <Tooltip title={isOnlyAdmin ? 'Cannot remove the only admin' : 'Remove Member'}>
+                            <span>
+                              <IconButton edge="end" aria-label="remove" onClick={() => handleRemove(m.user_id)} disabled={isOnlyAdmin}>
+                                <DeleteIcon />
+                              </IconButton>
+                            </span>
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </ListItem>
+                    {idx < members.length - 1 && <Divider />}
+                  </React.Fragment>
                 );
               })
             )}
           </List>
         )}
+        <Divider sx={{ my: 2 }} />
         {currentUserRole === 'admin' && (
           <form onSubmit={e => { e.preventDefault(); handleInvite(); }} style={{ marginTop: 24, display: 'flex', gap: 8, alignItems: 'center' }}>
             <TextField
