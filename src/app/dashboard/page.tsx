@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { supabase } from "@/app/utils/supabaseClient";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
@@ -80,9 +80,11 @@ interface FormSubmission {
 
 interface Member {
   user_id: string;
-  users?: { email?: string };
+  users?: { name?: string; email?: string };
   role: string;
 }
+
+type Membership = { workspace_id: string; workspaces?: { name?: string } };
 
 export default function DashboardPage() {
   const [numbers, setNumbers] = useState<NumberRow[]>([]);
@@ -107,64 +109,81 @@ export default function DashboardPage() {
   const [profileTabEvents, setProfileTabEvents] = useState<unknown[]>([]);
   const [inviteError, setInviteError] = useState('');
 
-  useEffect(() => {
-    const fetchWorkspaces = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setNotLoggedIn(true);
-        return;
+  const fetchWorkspaces = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setNotLoggedIn(true);
+      return;
+    }
+    await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
+    const { data: memberships } = await supabase
+      .from("workspace_members")
+      .select("workspace_id, role, workspaces(name)")
+      .eq("user_id", user.id);
+    const isAdmin = memberships?.some(m => m.role === 'admin');
+
+    if (isAdmin) {
+      const { data: allWorkspaces } = await supabase.from('workspaces').select('id, name');
+      setWorkspaces(allWorkspaces || []);
+      console.log("allWorkspaces", allWorkspaces);
+      if ((!selectedWorkspace || !allWorkspaces?.some(ws => ws.id === selectedWorkspace)) && allWorkspaces && allWorkspaces.length > 0) {
+        setSelectedWorkspace(allWorkspaces[0].id);
       }
-      await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
-      const workspaceRes = await supabase.from('workspaces').select('id, name');
-      if (workspaceRes.data) {
-        setWorkspaces(workspaceRes.data);
-        if (!selectedWorkspace && workspaceRes.data.length > 0) {
-          setSelectedWorkspace(workspaceRes.data[0].id);
-        }
-      }
-    };
-    fetchWorkspaces();
+    } else if (memberships && memberships.length > 0) {
+      setWorkspaces(
+        (memberships as Membership[]).map(m => ({
+          id: m.workspace_id,
+          name: m.workspaces?.name ?? 'Workspace'
+        }))
+      );
+    }
+  }, [selectedWorkspace]);
+
+  const fetchData = useCallback(async () => {
+    const { data: numbersData } = await supabase
+      .from("numbers")
+      .select("id, phone_number, workspace_id, purchased_at")
+      .eq('workspace_id', selectedWorkspace)
+      .order("purchased_at", { ascending: false })
+      .limit(100);
+    setNumbers((numbersData as NumberRow[]) || []);
+    const { data: callsData } = await supabase
+      .from("calls")
+      .select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id")
+      .eq('workspace_id', selectedWorkspace)
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setCalls((callsData as Call[]) || []);
+    const { data: formsData } = await supabase
+      .from("form_submissions")
+      .select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
+      .eq('workspace_id', selectedWorkspace)
+      .order("submitted_at", { ascending: false })
+      .limit(100);
+    setForms((formsData as FormSubmission[]) || []);
   }, [selectedWorkspace]);
 
   useEffect(() => {
-    if (!selectedWorkspace) return;
-    const fetchData = async () => {
-      const { data: numbersData } = await supabase
-        .from("numbers")
-        .select("id, phone_number, workspace_id, purchased_at")
-        .eq('workspace_id', selectedWorkspace)
-        .order("purchased_at", { ascending: false })
-        .limit(100);
-      setNumbers((numbersData as NumberRow[]) || []);
-      const { data: callsData } = await supabase
-        .from("calls")
-        .select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id")
-        .eq('workspace_id', selectedWorkspace)
-        .order("created_at", { ascending: false })
-        .limit(100);
-      setCalls((callsData as Call[]) || []);
-      const { data: formsData } = await supabase
-        .from("form_submissions")
-        .select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
-        .eq('workspace_id', selectedWorkspace)
-        .order("submitted_at", { ascending: false })
-        .limit(100);
-      setForms((formsData as FormSubmission[]) || []);
-    };
-    fetchData();
-  }, [selectedWorkspace]);
+    if (!selectedWorkspace) {
+      fetchWorkspaces();
+    } else {
+      fetchData();
+    }
+  }, [selectedWorkspace, fetchData, fetchWorkspaces]);
 
   useEffect(() => {
     if (tab === 4 && selectedWorkspace) {
       setMembersTabLoading(true);
-      supabase
-        .from('workspace_members')
-        .select('id, role, user_id, users(email)')
-        .eq('workspace_id', selectedWorkspace)
-        .then(({ data }) => {
-          setMembers((data as Member[]) || []);
-          setMembersTabLoading(false);
-        });
+      const fetchMembers = async () => {
+        const { data, error } = await supabase
+          .from('workspace_members')
+          .select('id, role, user_id, users:users!workspace_members_user_id_fkey(name, email)')
+          .eq('workspace_id', selectedWorkspace);
+        console.log(data, error);
+        setMembers((data as Member[]) || []);
+        setMembersTabLoading(false);
+      };
+      fetchMembers();
     }
   }, [tab, selectedWorkspace]);
 
@@ -511,7 +530,7 @@ export default function DashboardPage() {
                         ) : (
                           filteredCalls.map((call, idx) => (
                             <TableRow
-                              key={call.id}
+                              key={call.id || idx}
                               sx={{
                                 backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
                                 transition: 'background 0.2s',
@@ -540,10 +559,10 @@ export default function DashboardPage() {
                               <TableCell>{new Date(call.created_at).toLocaleString()}</TableCell>
                               <TableCell>
                                 <Box>
-                                  {(callEvents[call.id] || []).map((event) => {
-                                    const e = event as { id: string; type: string; message: string; timestamp: string };
+                                  {(callEvents[call.id] || []).map((event, eidx) => {
+                                    const e = event as { id?: string; type: string; message: string; timestamp: string };
                                     return (
-                                      <Box key={e.id} mb={1}>
+                                      <Box key={e.id || eidx} mb={1}>
                                         <Chip label={e.type} size="small" sx={{ mr: 1 }} />
                                         <Typography component="span" fontSize={13}>{e.message}</Typography>
                                         <Typography component="span" color="text.secondary" fontSize={11} sx={{ ml: 1 }}>
@@ -658,7 +677,7 @@ export default function DashboardPage() {
                     </Box>
                   </Box>
                 )}
-                {tab === 4 && (
+                {tab === 4 && selectedWorkspace && (
                   <Box>
                     <Typography variant="h6" fontWeight={700} mb={2}>Workspace Members</Typography>
                     {membersTabLoading ? (
@@ -669,9 +688,9 @@ export default function DashboardPage() {
                           <Typography color="text.secondary">No members found.</Typography>
                         ) : (
                           <Box>
-                            {members.map((m) => (
+                            {members.map((m, idx) => (
                               <Box key={m.user_id} display="flex" alignItems="center" gap={2} mb={1}>
-                                <Typography fontWeight={600}>{m.users?.email || m.user_id}</Typography>
+                                <Typography fontWeight={600}>{idx + 1}. {m.users?.name || m.users?.email || m.user_id}</Typography>
                                 <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
                               </Box>
                             ))}
@@ -679,22 +698,20 @@ export default function DashboardPage() {
                         )}
                       </Box>
                     )}
-                    {true && (
-                      <Box component="form" onSubmit={e => { e.preventDefault(); handleInvite(); }} display="flex" gap={2} alignItems="center">
-                        <TextField
-                          size="small"
-                          label="Invite by Email"
-                          value={inviteEmail ?? ""}
-                          onChange={e => setInviteEmail(e.target.value)}
-                          type="email"
-                          required
-                        />
-                        <Button type="submit" variant="contained" color="primary">Invite</Button>
-                        {inviteStatus === 'sending' && <Typography color="text.secondary">Sending...</Typography>}
-                        {inviteStatus === 'sent' && <Typography color="success.main" fontSize={14}>Invitation sent!</Typography>}
-                        {inviteStatus === 'error' && <Typography color="error.main" fontSize={14}>{inviteError}</Typography>}
-                      </Box>
-                    )}
+                    <Box component="form" onSubmit={e => { e.preventDefault(); handleInvite(); }} display="flex" gap={2} alignItems="center">
+                      <TextField
+                        size="small"
+                        label="Invite by Email"
+                        value={inviteEmail ?? ""}
+                        onChange={e => setInviteEmail(e.target.value)}
+                        type="email"
+                        required
+                      />
+                      <Button type="submit" variant="contained" color="primary">Invite</Button>
+                      {inviteStatus === 'sending' && <Typography color="text.secondary">Sending...</Typography>}
+                      {inviteStatus === 'sent' && <Typography color="success.main" fontSize={14}>Invitation sent!</Typography>}
+                      {inviteStatus === 'error' && <Typography color="error.main" fontSize={14}>{inviteError}</Typography>}
+                    </Box>
                   </Box>
                 )}
                 {tab === 5 && (
