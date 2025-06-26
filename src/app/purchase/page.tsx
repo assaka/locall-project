@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import Link from "next/link";
 import { Box, Typography, Card, Button, TextField, List, ListItem, Alert, Stack, CircularProgress, Container } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -10,8 +10,9 @@ import StepLabel from '@mui/material/StepLabel';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { supabase } from '@/app/utils/supabaseClient';
+import { useSearchParams } from 'next/navigation';
 
-const PurchasePage: React.FC = () => {
+function PurchasePageContent() {
   const [areaCode, setAreaCode] = useState("");
   const [numbers, setNumbers] = useState<unknown[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
@@ -19,6 +20,9 @@ const PurchasePage: React.FC = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(0);
+
+  const searchParams = useSearchParams();
+  const workspaceIdParam = searchParams.get("workspace_id");
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,10 +53,12 @@ const PurchasePage: React.FC = () => {
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
+    console.log("workspaceIdParam", workspaceIdParam);
+    console.log("user_id", user_id);
     const res = await fetch("/api/twilio-purchase", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buy: number, user_id }),
+      body: JSON.stringify({ buy: number, user_id, workspace_id: workspaceIdParam }),
     });
     if (!res.ok) {
       const error = await res.text();
@@ -158,6 +164,12 @@ const PurchasePage: React.FC = () => {
       </Container>
     </Box>
   );
-};
+}
 
-export default PurchasePage;
+export default function PurchasePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <PurchasePageContent />
+    </Suspense>
+  );
+}
