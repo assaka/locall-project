@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { supabase } from "@/app/utils/supabaseClient";
 import Container from "@mui/material/Container";
 import Box from "@mui/material/Box";
@@ -8,11 +8,23 @@ import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function AuthPage() {
-  const [tab, setTab] = useState(0);
-  const [email, setEmail] = useState("");
+export default function AuthPageWrapper() {
+  return (
+    <Suspense>
+      <AuthPage />
+    </Suspense>
+  );
+}
+
+function AuthPage() {
+  const searchParams = useSearchParams();
+  const inviteEmail = searchParams.get("email") || "";
+  const inviteWorkspaceId = searchParams.get("workspace_id") || "";
+  const inviteId = searchParams.get("invite_id") || "";
+  const [tab, setTab] = useState(inviteEmail || inviteWorkspaceId || inviteId ? 1 : 0);
+  const [email, setEmail] = useState(inviteEmail);
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -45,8 +57,23 @@ export default function AuthPage() {
       options: { data: { name } },
     });
     setLoading(false);
-    if (error) setError(error.message);
-    else setSuccess("Registration successful! Check your email to confirm.");
+    if (error) {
+      const errMsg = typeof error.message === 'string' ? error.message : String(error.message);
+      if (
+        errMsg.toLowerCase().includes("already registered") ||
+        errMsg.toLowerCase().includes("user already exists") ||
+        errMsg.toLowerCase().includes("email address is already in use")
+      ) {
+        setError("This email is already registered. Please log in or use a different email address.");
+      } else {
+        setError(errMsg);
+      }
+    } else {
+      setSuccess("If this email is not registered, you will receive a confirmation email. If you already have an account, please log in.");
+      if (inviteId) {
+        await supabase.from('invitations').update({ status: 'accepted' }).eq('id', inviteId);
+      }
+    }
   };
 
   useEffect(() => {
@@ -97,8 +124,8 @@ export default function AuthPage() {
             required
             fullWidth
           />
-          {error && <Typography color="error.main">{error}</Typography>}
-          {success && <Typography color="success.main">{success}</Typography>}
+          {error && <Typography color="error.main">{typeof error === 'string' ? error : String(error)}</Typography>}
+          {success && <Typography color="success.main">{typeof success === 'string' ? success : String(success)}</Typography>}
           <Button type="submit" variant="contained" color="primary" disabled={loading} sx={{ mt: 2 }}>
             Login
           </Button>
@@ -128,8 +155,8 @@ export default function AuthPage() {
             required
             fullWidth
           />
-          {error && <Typography color="error.main">{error}</Typography>}
-          {success && <Typography color="success.main">{success}</Typography>}
+          {error && <Typography color="error.main">{typeof error === 'string' ? error : String(error)}</Typography>}
+          {success && <Typography color="success.main">{typeof success === 'string' ? success : String(success)}</Typography>}
           <Button type="submit" variant="contained" color="primary" disabled={loading} sx={{ mt: 2 }}>
             Register
           </Button>

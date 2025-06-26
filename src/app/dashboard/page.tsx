@@ -105,6 +105,7 @@ export default function DashboardPage() {
   const [callEvents, setCallEvents] = useState<Record<string, unknown[]>>({});
   const [profileTabVisitorId, setProfileTabVisitorId] = useState('');
   const [profileTabEvents, setProfileTabEvents] = useState<unknown[]>([]);
+  const [inviteError, setInviteError] = useState('');
 
   useEffect(() => {
     const fetchWorkspaces = async () => {
@@ -182,13 +183,37 @@ export default function DashboardPage() {
   }, [calls]);
 
   const handleInvite = async () => {
-    setInviteStatus(null);
-    const { error } = await supabase.from('invitations').insert({ email: inviteEmail, workspace_id: selectedWorkspace });
-    if (error) {
-      setInviteStatus('Failed to send invite.');
-    } else {
-      setInviteStatus('Invitation sent!');
-      setInviteEmail("");
+    setInviteStatus('sending');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const inviterUserId = user?.id;
+      const generatedInviteLink = `${window.location.origin}/auth?workspace_id=${selectedWorkspace}`;
+      const payload = {
+        email: inviteEmail,
+        workspaceName: workspaces.find(ws => ws.id === selectedWorkspace)?.name,
+        inviteLink: generatedInviteLink,
+        workspace_id: selectedWorkspace,
+        invited_by: inviterUserId,
+      };
+      const res = await fetch('/api/send-invite-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setInviteStatus('error');
+        setInviteError(data.error || 'Failed to send invite');
+        console.error('Invite error:', data.details || data.error);
+      } else {
+        setInviteStatus('sent');
+        setInviteError('');
+        console.log('Invite sent result:', data.result);
+      }
+    } catch (err) {
+      setInviteStatus('error');
+      setInviteError('Network or server error');
+      console.error('Invite error:', err);
     }
   };
 
@@ -665,7 +690,9 @@ export default function DashboardPage() {
                           required
                         />
                         <Button type="submit" variant="contained" color="primary">Invite</Button>
-                        {inviteStatus && <Typography color="success.main" fontSize={14}>{inviteStatus}</Typography>}
+                        {inviteStatus === 'sending' && <Typography color="text.secondary">Sending...</Typography>}
+                        {inviteStatus === 'sent' && <Typography color="success.main" fontSize={14}>Invitation sent!</Typography>}
+                        {inviteStatus === 'error' && <Typography color="error.main" fontSize={14}>{inviteError}</Typography>}
                       </Box>
                     )}
                   </Box>

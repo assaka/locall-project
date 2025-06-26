@@ -66,6 +66,9 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
     } else {
       const { data: ws } = await supabase.from('workspaces').select('name').eq('id', workspaceId).single();
       const inviteLink = `${window.location.origin}/auth`;
+      console.log("inviteLink", inviteLink);
+      console.log("email", inviteEmail);
+      console.log("workspaceName", ws?.name);
       await fetch('/api/send-invite-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
