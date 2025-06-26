@@ -52,6 +52,7 @@ interface NumberRow {
   phone_number: string;
   workspace_id?: string | null;
   purchased_at: string;
+  user_id?: string | null;
 }
 
 interface Call {
@@ -63,6 +64,7 @@ interface Call {
   recording_url?: string | null;
   created_at: string;
   user_id: string;
+  visitor_id?: string | null;
 }
 
 interface FormSubmission {
@@ -76,6 +78,7 @@ interface FormSubmission {
   source: string | null;
   ip_address: string | null;
   user_agent: string | null;
+  visitor_id?: string | null;
 }
 
 interface Member {
@@ -94,6 +97,7 @@ export default function DashboardPage() {
   const [search, setSearch] = useState("");
   const [workspaces, setWorkspaces] = useState<{ id: string; name: string }[]>([]);
   const [selectedWorkspace, setSelectedWorkspace] = useState<string>("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
@@ -110,24 +114,23 @@ export default function DashboardPage() {
   const [inviteError, setInviteError] = useState('');
 
   const fetchWorkspaces = useCallback(async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setNotLoggedIn(true);
-      return;
-    }
-    await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setNotLoggedIn(true);
+        return;
+      }
+      await ensurePersonalWorkspace({ id: user.id, email: user.email, name: user.user_metadata?.name });
     const { data: memberships } = await supabase
       .from("workspace_members")
       .select("workspace_id, role, workspaces(name)")
       .eq("user_id", user.id);
-    const isAdmin = memberships?.some(m => m.role === 'admin');
-
-    if (isAdmin) {
+    const admin = memberships?.some(m => m.role === 'admin');
+    setIsAdmin(!!admin);
+    if (admin) {
       const { data: allWorkspaces } = await supabase.from('workspaces').select('id, name');
       setWorkspaces(allWorkspaces || []);
-      console.log("allWorkspaces", allWorkspaces);
-      if ((!selectedWorkspace || !allWorkspaces?.some(ws => ws.id === selectedWorkspace)) && allWorkspaces && allWorkspaces.length > 0) {
-        setSelectedWorkspace(allWorkspaces[0].id);
+      if (!selectedWorkspace || (allWorkspaces && !allWorkspaces.some(ws => ws.id === selectedWorkspace))) {
+        setSelectedWorkspace('all');
       }
     } else if (memberships && memberships.length > 0) {
       setWorkspaces(
@@ -136,31 +139,32 @@ export default function DashboardPage() {
           name: m.workspaces?.name ?? 'Workspace'
         }))
       );
+      if (!selectedWorkspace || !memberships.some(m => m.workspace_id === selectedWorkspace)) {
+        setSelectedWorkspace(memberships[0].workspace_id);
+      }
     }
   }, [selectedWorkspace]);
 
   const fetchData = useCallback(async () => {
-    const { data: numbersData } = await supabase
-      .from("numbers")
-      .select("id, phone_number, workspace_id, purchased_at")
-      .eq('workspace_id', selectedWorkspace)
-      .order("purchased_at", { ascending: false })
-      .limit(100);
-    setNumbers((numbersData as NumberRow[]) || []);
-    const { data: callsData } = await supabase
-      .from("calls")
-      .select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id")
-      .eq('workspace_id', selectedWorkspace)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    setCalls((callsData as Call[]) || []);
-    const { data: formsData } = await supabase
-      .from("form_submissions")
-      .select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent")
-      .eq('workspace_id', selectedWorkspace)
-      .order("submitted_at", { ascending: false })
-      .limit(100);
-    setForms((formsData as FormSubmission[]) || []);
+    let numbersData, callsData, formsData;
+    if (selectedWorkspace === 'all') {
+      const { data: n } = await supabase.from("numbers").select("id, phone_number, workspace_id, purchased_at, user_id").order("purchased_at", { ascending: false }).limit(100);
+      numbersData = n;
+      const { data: c } = await supabase.from("calls").select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id, visitor_id").order("created_at", { ascending: false }).limit(100);
+      callsData = c;
+      const { data: f } = await supabase.from("form_submissions").select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent, visitor_id").order("submitted_at", { ascending: false }).limit(100);
+      formsData = f;
+    } else {
+      const { data: n } = await supabase.from("numbers").select("id, phone_number, workspace_id, purchased_at, user_id").eq('workspace_id', selectedWorkspace).order("purchased_at", { ascending: false }).limit(100);
+      numbersData = n;
+      const { data: c } = await supabase.from("calls").select("id, from_number, to_number, status, duration, recording_url, workspace_id, created_at, user_id, visitor_id").eq('workspace_id', selectedWorkspace).order("created_at", { ascending: false }).limit(100);
+      callsData = c;
+      const { data: f } = await supabase.from("form_submissions").select("id, workspace_id, user_id, form_name, submitted_at, data, source, ip_address, user_agent, visitor_id").eq('workspace_id', selectedWorkspace).order("submitted_at", { ascending: false }).limit(100);
+      formsData = f;
+    }
+      setNumbers((numbersData as NumberRow[]) || []);
+      setCalls((callsData as Call[]) || []);
+      setForms((formsData as FormSubmission[]) || []);
   }, [selectedWorkspace]);
 
   useEffect(() => {
@@ -172,20 +176,28 @@ export default function DashboardPage() {
   }, [selectedWorkspace, fetchData, fetchWorkspaces]);
 
   useEffect(() => {
-    if (tab === 4 && selectedWorkspace) {
+    const fetchMembers = async () => {
       setMembersTabLoading(true);
-      const fetchMembers = async () => {
-        const { data, error } = await supabase
+      let data;
+      if (selectedWorkspace === 'all') {
+        const { data: allMembers } = await supabase
           .from('workspace_members')
+          .select('id, role, user_id, users:users!workspace_members_user_id_fkey(name, email)');
+        data = allMembers;
+      } else if (selectedWorkspace) {
+        const { data: wsMembers } = await supabase
+        .from('workspace_members')
           .select('id, role, user_id, users:users!workspace_members_user_id_fkey(name, email)')
           .eq('workspace_id', selectedWorkspace);
-        console.log(data, error);
-        setMembers((data as Member[]) || []);
-        setMembersTabLoading(false);
-      };
+        data = wsMembers;
+      }
+      setMembers((data as Member[]) || []);
+          setMembersTabLoading(false);
+    };
+    if (selectedWorkspace) {
       fetchMembers();
     }
-  }, [tab, selectedWorkspace]);
+  }, [selectedWorkspace]);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -224,7 +236,7 @@ export default function DashboardPage() {
         setInviteStatus('error');
         setInviteError(data.error || 'Failed to send invite');
         console.error('Invite error:', data.details || data.error);
-      } else {
+    } else {
         setInviteStatus('sent');
         setInviteError('');
         console.log('Invite sent result:', data.result);
@@ -236,7 +248,12 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredNumbers = numbers.filter(n => n.phone_number.includes(search));
+  const filteredNumbers = numbers.filter(n => {
+    if (selectedUser !== "all") {
+      return n.phone_number.includes(search) && n.user_id === selectedUser;
+    }
+    return n.phone_number.includes(search);
+  });
   const filteredCalls = calls.filter(c =>
     (selectedUser === "all" || c.user_id === selectedUser) &&
     (c.from_number.includes(search) || c.to_number.includes(search))
@@ -295,10 +312,10 @@ export default function DashboardPage() {
     });
     return Object.entries(counts).map(([date, count]) => ({ date, count }));
   };
-  const callsByDay = getCountsByDay(calls, 'created_at');
-  const formsByDay = getCountsByDay(forms, 'submitted_at');
+  const callsByDay = getCountsByDay(filteredCalls, 'created_at');
+  const formsByDay = getCountsByDay(filteredForms, 'submitted_at');
   const topNumbers = Object.entries(
-    calls.reduce((acc, c) => {
+    filteredCalls.reduce((acc, c) => {
       acc[c.from_number] = (acc[c.from_number] || 0) + 1;
       return acc;
     }, {} as Record<string, number>)
@@ -316,6 +333,12 @@ export default function DashboardPage() {
       ...(formData || [])
     ].sort((a, b) => new Date('submitted_at' in b ? b.submitted_at : b.created_at).getTime() - new Date('submitted_at' in a ? a.submitted_at : a.created_at).getTime()));
   };
+
+  const uniqueMembers = selectedWorkspace === 'all'
+    ? members.filter((m, idx, arr) =>
+        arr.findIndex(x => x.user_id === m.user_id) === idx
+      )
+    : members;
 
   if (notLoggedIn) {
     return (
@@ -342,221 +365,226 @@ export default function DashboardPage() {
             Back to Home
           </Button>
         </Box>
-        <Box display="flex" flexDirection="column" alignItems="center">
-          <Typography variant="h3" fontWeight={900} align="center" gutterBottom>
-            Welcome to Smart Dashboard
-          </Typography>
-          <Typography variant="subtitle1" align="center" color="text.secondary" mb={3}>
-            All your numbers, calls, and form submissions in one place.
-          </Typography>
-          <Box display="flex" justifyContent="center" gap={3} mb={2}>
+      <Box display="flex" flexDirection="column" alignItems="center">
+        <Typography variant="h3" fontWeight={900} align="center" gutterBottom>
+          Welcome to Smart Dashboard
+        </Typography>
+        <Typography variant="subtitle1" align="center" color="text.secondary" mb={3}>
+          All your numbers, calls, and form submissions in one place.
+        </Typography>
+        <Box display="flex" justifyContent="center" gap={3} mb={2}>
             {summary.map((s) => (
-              <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
-                {s.icon}
-                <Box>
-                  <Typography fontWeight={700} fontSize={22}>{s.value}</Typography>
-                  <Typography fontSize={14} color="text.secondary">{s.label}</Typography>
-                </Box>
-              </Card>
-            ))}
-          </Box>
-          <Box
-            sx={{
-              mt: 4,
-              mb: 4,
-              p: 3,
-              background: '#fff',
-              borderRadius: 4,
-              boxShadow: 3,
-              maxWidth: 1200,
-              width: '100%',
-            }}
-          >
-            <Box display="flex" alignItems="center" gap={2} mb={2}>
-              <FilterListIcon color="action" sx={{ mr: 1 }} />
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mr: 2 }}>
-                Filters:
-              </Typography>
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-                <InputLabel id="workspace-label">Workspace</InputLabel>
-                <Select
-                  labelId="workspace-label"
-                  label="Workspace"
-                  value={selectedWorkspace ?? ""}
-                  onChange={e => {
-                    setSelectedWorkspace(e.target.value);
-                  }}
-                >
-                  {workspaces.map(ws => (
-                    <MenuItem key={ws.id} value={ws.id}>{ws.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Box flexGrow={1} />
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
-                <InputLabel id="user-label">User</InputLabel>
-                <Select
-                  labelId="user-label"
-                  label="User"
-                  value={selectedUser}
-                  onChange={e => setSelectedUser(e.target.value)}
-                >
-                  <MenuItem value="all">All users</MenuItem>
-                  {members.map(user => (
+            <Card key={s.label} sx={{ minWidth: 120, px: 3, py: 2, display: 'flex', alignItems: 'center', gap: 1, boxShadow: 2 }}>
+              {s.icon}
+              <Box>
+                <Typography fontWeight={700} fontSize={22}>{s.value}</Typography>
+                <Typography fontSize={14} color="text.secondary">{s.label}</Typography>
+              </Box>
+            </Card>
+          ))}
+        </Box>
+        <Box
+          sx={{
+            mt: 4,
+            mb: 4,
+            p: 3,
+            background: '#fff',
+            borderRadius: 4,
+            boxShadow: 3,
+            maxWidth: 1200,
+            width: '100%',
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2} mb={2}>
+            <FilterListIcon color="action" sx={{ mr: 1 }} />
+            <Typography variant="subtitle2" color="text.secondary" sx={{ mr: 2 }}>
+              Filters:
+            </Typography>
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="workspace-label">Workspace</InputLabel>
+              <Select
+                labelId="workspace-label"
+                label="Workspace"
+                value={selectedWorkspace ?? ""}
+                onChange={e => {
+                  setSelectedWorkspace(e.target.value);
+                }}
+              >
+                  {isAdmin && (
+                    <MenuItem key="all" value="all">All workspaces</MenuItem>
+                  )}
+                {workspaces.map(ws => (
+                  <MenuItem key={ws.id} value={ws.id}>{ws.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box flexGrow={1} />
+            <FormControl variant="outlined" size="small" sx={{ minWidth: 160 }}>
+              <InputLabel id="user-label">User</InputLabel>
+              <Select
+                labelId="user-label"
+                label="User"
+                value={selectedUser}
+                onChange={e => setSelectedUser(e.target.value)}
+              >
+                <MenuItem value="all">All users</MenuItem>
+                  {uniqueMembers.map(user => (
                     <MenuItem key={user.user_id} value={user.user_id}>{user.users?.email || user.user_id}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <PersonIcon color="action" />
-            </Box>
-            <Divider sx={{ mb: 2 }} />
-            <Card sx={{ mb: 4, boxShadow: 3 }}>
-              <Tabs value={tab} onChange={(_, v) => { setTab(Number(v)); setSearch(""); }} centered>
-                <Tab icon={<PhoneIphoneIcon />} label="Numbers" />
-                <Tab icon={<CallIcon />} label="Calls" />
-                <Tab icon={<AssignmentIndIcon />} label="Form Submissions" />
-                <Tab icon={<TimelineIcon />} label="Analytics" />
-                <Tab icon={<GroupIcon />} label="Members" />
-                <Tab icon={<EventIcon />} label="Appointments" />
+                ))}
+              </Select>
+            </FormControl>
+            <PersonIcon color="action" />
+          </Box>
+          <Divider sx={{ mb: 2 }} />
+          <Card sx={{ mb: 4, boxShadow: 3 }}>
+            <Tabs value={tab} onChange={(_, v) => { setTab(Number(v)); setSearch(""); }} centered>
+              <Tab icon={<PhoneIphoneIcon />} label="Numbers" />
+              <Tab icon={<CallIcon />} label="Calls" />
+              <Tab icon={<AssignmentIndIcon />} label="Form Submissions" />
+              <Tab icon={<TimelineIcon />} label="Analytics" />
+              <Tab icon={<GroupIcon />} label="Members" />
+              <Tab icon={<EventIcon />} label="Appointments" />
                 <Tab icon={<PersonIcon />} label="User Profiles" />
-              </Tabs>
-              <CardContent>
-                <Box mb={2} display="flex" alignItems="center" justifyContent="space-between" gap={2}>
-                  <TextField
+            </Tabs>
+            <CardContent>
+              <Box mb={2} display="flex" alignItems="center" justifyContent="space-between" gap={2}>
+                <TextField
+                  size="small"
+                  placeholder="Search numbers..."
+                  value={search ?? ""}
+                  onChange={e => setSearch(e.target.value)}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+                  sx={{ width: 260 }}
+                />
+                <Tooltip title="Purchase a new phone number for your workspace" arrow>
+                  <Button
+                    variant="contained"
+                    color="primary"
                     size="small"
-                    placeholder="Search numbers..."
-                    value={search ?? ""}
-                    onChange={e => setSearch(e.target.value)}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
-                    sx={{ width: 260 }}
-                  />
-                  <Tooltip title="Purchase a new phone number for your workspace" arrow>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="small"
-                      component={Link}
+                    component={Link}
                       href={`/purchase?workspace_id=${selectedWorkspace}`}
-                      startIcon={<AddIcCallIcon />}
-                      sx={{ fontWeight: 700, px: 2, py: 0.5, borderRadius: 1, fontSize: 14, boxShadow: 1, minWidth: 0 }}
-                    >
-                      Buy Number
-                    </Button>
-                  </Tooltip>
-                </Box>
-                {tab === 0 && (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
+                    startIcon={<AddIcCallIcon />}
+                    sx={{ fontWeight: 700, px: 2, py: 0.5, borderRadius: 1, fontSize: 14, boxShadow: 1, minWidth: 0 }}
+                  >
+                    Buy Number
+                  </Button>
+                </Tooltip>
+              </Box>
+              {tab === 0 && (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Phone Number</TableCell>
+                        <TableCell>Purchased At</TableCell>
+                        <TableCell>Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredNumbers.length === 0 ? (
                         <TableRow>
-                          <TableCell>Phone Number</TableCell>
-                          <TableCell>Purchased At</TableCell>
-                          <TableCell>Actions</TableCell>
+                          <TableCell colSpan={5} align="center" sx={{ color: 'text.disabled', py: 6 }}>
+                            <InfoOutlinedIcon sx={{ mb: 1 }} />
+                            <br />No data found.
+                          </TableCell>
                         </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {filteredNumbers.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={5} align="center" sx={{ color: 'text.disabled', py: 6 }}>
-                              <InfoOutlinedIcon sx={{ mb: 1 }} />
-                              <br />No data found.
+                      ) : (
+                        filteredNumbers.map((num, idx) => (
+                          <TableRow
+                            key={num.id}
+                            sx={{
+                              backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
+                              transition: 'background 0.2s',
+                              '&:hover': { backgroundColor: 'primary.lighter' }
+                            }}
+                          >
+                            <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <Tooltip title={num.phone_number}>
+                                <span>{num.phone_number}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell>{new Date(num.purchased_at).toLocaleString()}</TableCell>
+                            <TableCell>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                component={Link}
+                                href={`/call?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
+                                sx={{ mr: 1 }}
+                              >
+                                Call
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                component={Link}
+                                href={`/form?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
+                              >
+                                Message
+                              </Button>
                             </TableCell>
                           </TableRow>
-                        ) : (
-                          filteredNumbers.map((num, idx) => (
-                            <TableRow
-                              key={num.id}
-                              sx={{
-                                backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
-                                transition: 'background 0.2s',
-                                '&:hover': { backgroundColor: 'primary.lighter' }
-                              }}
-                            >
-                              <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                <Tooltip title={num.phone_number}>
-                                  <span>{num.phone_number}</span>
-                                </Tooltip>
-                              </TableCell>
-                              <TableCell>{new Date(num.purchased_at).toLocaleString()}</TableCell>
-                              <TableCell>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  component={Link}
-                                  href={`/call?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
-                                  sx={{ mr: 1 }}
-                                >
-                                  Call
-                                </Button>
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  component={Link}
-                                  href={`/form?from=${encodeURIComponent(num.phone_number)}&workspace_id=${encodeURIComponent(num.workspace_id || "")}`}
-                                >
-                                  Message
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-                {tab === 1 && (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                          <TableCell>From</TableCell>
-                          <TableCell>To</TableCell>
-                          <TableCell>Status</TableCell>
-                          <TableCell>Duration</TableCell>
-                          <TableCell>Recording</TableCell>
-                          <TableCell>Time</TableCell>
-                          <TableCell>Events/Notes</TableCell>
-                          <TableCell>Add Note</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {filteredCalls.length === 0 ? (
-                          <TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {tab === 1 && (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                        <TableCell>From</TableCell>
+                        <TableCell>To</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell>Duration</TableCell>
+                        <TableCell>Recording</TableCell>
+                        <TableCell>Visitor ID</TableCell>
+                        <TableCell>Time</TableCell>
+                        <TableCell>Events/Notes</TableCell>
+                        <TableCell>Add Note</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredCalls.length === 0 ? (
+                        <TableRow>
                             <TableCell colSpan={8} align="center" sx={{ color: 'text.disabled', py: 6 }}>
-                              <InfoOutlinedIcon sx={{ mb: 1 }} />
-                              <br />No data found.
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          filteredCalls.map((call, idx) => (
-                            <TableRow
+                            <InfoOutlinedIcon sx={{ mb: 1 }} />
+                            <br />No data found.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredCalls.map((call, idx) => (
+                          <TableRow
                               key={call.id || idx}
-                              sx={{
-                                backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
-                                transition: 'background 0.2s',
-                                '&:hover': { backgroundColor: 'primary.lighter' }
-                              }}
-                            >
-                              <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                <Tooltip title={call.from_number}>
-                                  <span>{call.from_number}</span>
-                                </Tooltip>
-                              </TableCell>
-                              <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                <Tooltip title={call.to_number}>
-                                  <span>{call.to_number}</span>
-                                </Tooltip>
-                              </TableCell>
-                              <TableCell>
-                                <Chip label={call.status} color={call.status === 'completed' ? 'success' : 'warning'} size="small" />
-                              </TableCell>
-                              <TableCell>{call.duration ? `${call.duration} sec` : '-'}</TableCell>
-                              <TableCell>
-                                {call.recording_url ? (
-                                  <a href={call.recording_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>Listen</a>
-                                ) : '-'}
-                              </TableCell>
-                              <TableCell>{new Date(call.created_at).toLocaleString()}</TableCell>
+                            sx={{
+                              backgroundColor: idx % 2 === 0 ? 'grey.50' : 'background.paper',
+                              transition: 'background 0.2s',
+                              '&:hover': { backgroundColor: 'primary.lighter' }
+                            }}
+                          >
+                            <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <Tooltip title={call.from_number}>
+                                <span>{call.from_number}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell sx={{ maxWidth: 180, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              <Tooltip title={call.to_number}>
+                                <span>{call.to_number}</span>
+                              </Tooltip>
+                            </TableCell>
+                            <TableCell>
+                              <Chip label={call.status} color={call.status === 'completed' ? 'success' : 'warning'} size="small" />
+                            </TableCell>
+                            <TableCell>{call.duration ? `${call.duration} sec` : '-'}</TableCell>
+                            <TableCell>
+                              {call.recording_url ? (
+                                <a href={call.recording_url} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>Listen</a>
+                              ) : '-'}
+                            </TableCell>
+                            <TableCell>{call.visitor_id || '-'}</TableCell>
+                            <TableCell>{new Date(call.created_at).toLocaleString()}</TableCell>
                               <TableCell>
                                 <Box>
                                   {(callEvents[call.id] || []).map((event, eidx) => {
@@ -578,41 +606,43 @@ export default function DashboardPage() {
                                   Add Note
                                 </Button>
                               </TableCell>
-                            </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-                {tab === 2 && (
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow>
-                          <TableCell>Form Name</TableCell>
-                          <TableCell>Name</TableCell>
-                          <TableCell>Phone</TableCell>
-                          <TableCell>Message</TableCell>
-                          <TableCell>Time</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {filteredForms.map((form) => (
-                          <TableRow key={form.id}>
-                            <TableCell>{form.form_name}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {tab === 2 && (
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Form Name</TableCell>
+                        <TableCell>Name</TableCell>
+                        <TableCell>Phone</TableCell>
+                        <TableCell>Message</TableCell>
+                        <TableCell>Visitor ID</TableCell>
+                        <TableCell>Time</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {filteredForms.map((form) => (
+                        <TableRow key={form.id}>
+                          <TableCell>{form.form_name}</TableCell>
                             <TableCell>{(form.data as { name?: string }).name ?? '-'}</TableCell>
                             <TableCell>{(form.data as { phone?: string }).phone ?? '-'}</TableCell>
                             <TableCell>{(form.data as { message?: string }).message ?? '-'}</TableCell>
-                            <TableCell>{new Date(form.submitted_at).toLocaleString()}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                )}
-                {tab === 3 && (
-                  <Box>
+                            <TableCell>{form.visitor_id || '-'}</TableCell>
+                          <TableCell>{new Date(form.submitted_at).toLocaleString()}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+              {tab === 3 && (
+                <Box>
                     <Typography variant="h6" fontWeight={700} mb={2}>Analytics</Typography>
                     <Box display="flex" gap={4} flexWrap="wrap" mb={4}>
                       <Box flex={1} minWidth={320}>
@@ -655,8 +685,8 @@ export default function DashboardPage() {
                     <Divider sx={{ my: 3 }} />
                     <Typography variant="h6" fontWeight={700} mb={2}>User Journey Timeline</Typography>
                     <Box>
-                      {[...calls, ...forms]
-                        .sort((a, b) =>
+                      {[...filteredCalls, ...filteredForms]
+                        .sort((a, b) => 
                           new Date('submitted_at' in b ? b.submitted_at : b.created_at).getTime() -
                           new Date('submitted_at' in a ? a.submitted_at : a.created_at).getTime()
                         )
@@ -674,30 +704,30 @@ export default function DashboardPage() {
                             </Typography>
                           </Box>
                         ))}
-                    </Box>
                   </Box>
-                )}
+                </Box>
+              )}
                 {tab === 4 && selectedWorkspace && (
-                  <Box>
-                    <Typography variant="h6" fontWeight={700} mb={2}>Workspace Members</Typography>
-                    {membersTabLoading ? (
-                      <Box display="flex" justifyContent="center" alignItems="center" minHeight={100}><CircularProgress /></Box>
-                    ) : (
-                      <Box mb={3}>
-                        {members.length === 0 ? (
-                          <Typography color="text.secondary">No members found.</Typography>
-                        ) : (
-                          <Box>
+                <Box>
+                  <Typography variant="h6" fontWeight={700} mb={2}>Workspace Members</Typography>
+                  {membersTabLoading ? (
+                    <Box display="flex" justifyContent="center" alignItems="center" minHeight={100}><CircularProgress /></Box>
+                  ) : (
+                    <Box mb={3}>
+                      {members.length === 0 ? (
+                        <Typography color="text.secondary">No members found.</Typography>
+                      ) : (
+                        <Box>
                             {members.map((m, idx) => (
                               <Box key={m.user_id} display="flex" alignItems="center" gap={2} mb={1}>
                                 <Typography fontWeight={600}>{idx + 1}. {m.users?.name || m.users?.email || m.user_id}</Typography>
-                                <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-                      </Box>
-                    )}
+                              <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+                    </Box>
+                  )}
                     <Box component="form" onSubmit={e => { e.preventDefault(); handleInvite(); }} display="flex" gap={2} alignItems="center">
                       <TextField
                         size="small"
@@ -712,20 +742,20 @@ export default function DashboardPage() {
                       {inviteStatus === 'sent' && <Typography color="success.main" fontSize={14}>Invitation sent!</Typography>}
                       {inviteStatus === 'error' && <Typography color="error.main" fontSize={14}>{inviteError}</Typography>}
                     </Box>
-                  </Box>
-                )}
-                {tab === 5 && (
-                  <Box sx={{ my: 4 }}>
-                    <iframe
-                      src="https://calendly.com/edwardp-dev2025/30min"
-                      width="100%"
-                      height="600"
-                      frameBorder="0"
-                      title="Book an Appointment"
-                      style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-                    />
-                  </Box>
-                )}
+                </Box>
+              )}
+              {tab === 5 && (
+                <Box sx={{ my: 4 }}>
+                  <iframe
+                    src="https://calendly.com/edwardp-dev2025/30min"
+                    width="100%"
+                    height="600"
+                    frameBorder="0"
+                    title="Book an Appointment"
+                    style={{ borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                  />
+                </Box>
+              )}
                 {tab === 6 && (
                   <Box>
                     <Typography variant="h6" fontWeight={700} mb={2}>User Profile Lookup</Typography>
@@ -763,10 +793,10 @@ export default function DashboardPage() {
                     )}
                   </Box>
                 )}
-              </CardContent>
-            </Card>
-          </Box>
+            </CardContent>
+          </Card>
         </Box>
+      </Box>
         <Dialog open={noteDialogOpen} onClose={handleCloseNoteDialog}>
           <DialogTitle>Add Note/Event</DialogTitle>
           <DialogContent>
@@ -793,7 +823,7 @@ export default function DashboardPage() {
             <Button onClick={handleAddNote} variant="contained">Add</Button>
           </DialogActions>
         </Dialog>
-      </Container>
+    </Container>
     </Suspense>
   );
 }
