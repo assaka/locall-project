@@ -74,7 +74,6 @@ function PurchasePageContent() {
   const searchParams = useSearchParams();
   const workspaceIdParam = searchParams.get("workspace_id");
 
-  // Fetch user balance
   const fetchBalance = async () => {
     setBalanceLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -190,7 +189,7 @@ function PurchasePageContent() {
         setMessage("Number purchased successfully!");
         setNumbers([]);
         setStep(3);
-        fetchBalance(); // Refresh balance after purchase
+        fetchBalance();
       } else {
         setError(data.error || "Purchase failed");
       }
@@ -226,7 +225,6 @@ function PurchasePageContent() {
     }
   };
 
-  // Top up handler
   const handleTopUp = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;

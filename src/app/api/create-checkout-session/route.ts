@@ -15,8 +15,8 @@ export async function POST(request: Request) {
         },
       ],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/purchase?success=1`,
-      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/purchase?canceled=1`,
+      success_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/purchase?success=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/purchase?canceled=1`,
       metadata: { user_id },
     });
     return NextResponse.json({ url: session.url });
