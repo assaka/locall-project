@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
-import { Box, Typography, Card, Button, TextField, List, ListItem, Alert, Stack, CircularProgress, Container, Tabs, Tab } from '@mui/material';
+import { Box, Typography, Card, Button, TextField, List, ListItem, Alert, Stack, CircularProgress, Container, Tabs, Tab, MenuItem, Select, InputLabel, FormControl, Checkbox, ListItemText, OutlinedInput, Paper, Chip } from '@mui/material';
 import PhoneIcon from '@mui/icons-material/Phone';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Stepper from '@mui/material/Stepper';
@@ -11,11 +11,49 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { supabase } from '@/app/utils/supabaseClient';
 import { useSearchParams } from 'next/navigation';
+import { COUNTRY_OPTIONS, COUNTRY_CODE_MAP } from '../constant/countries';
 
 type AvailableNumber = { sid: string; phoneNumber: string; friendlyName?: string };
 
+const TYPE_OPTIONS = [
+  { value: 'any', label: 'Any' },
+  { value: 'mobile', label: 'Mobile' },
+  { value: 'landline', label: 'Landline' },
+  { value: 'toll-free', label: 'Toll-Free' },
+];
+const FEATURE_OPTIONS = [
+  { value: 'SMS', label: 'SMS' },
+  { value: 'VOICE', label: 'Voice' },
+  { value: 'MMS', label: 'MMS' },
+];
+const MATCH_TYPE_OPTIONS = [
+  { value: 'contains', label: 'Contains' },
+  { value: 'starts', label: 'Starts with' },
+  { value: 'ends', label: 'Ends with' },
+];
+
+function formatFriendlyName(msisdn: string, country: string) {
+  if (!msisdn) return '';
+  if ((country === 'US' || country === 'CA') && msisdn.length === 11 && msisdn.startsWith('1')) {
+    return `+1 ${msisdn.slice(1,4)}-${msisdn.slice(4,7)}-${msisdn.slice(7)}`;
+  }
+  if (country === 'GB' && msisdn.length === 12 && msisdn.startsWith('44')) {
+    return `+44 ${msisdn.slice(2,6)} ${msisdn.slice(6)}`;
+  }
+  if (country === 'DE' && msisdn.length > 2 && msisdn.startsWith('49')) {
+    return `+49 ${msisdn.slice(2,6)} ${msisdn.slice(6)}`;
+  }
+  if (country === 'FR' && msisdn.length === 11 && msisdn.startsWith('33')) {
+    return `+33 ${msisdn.slice(2,3)} ${msisdn.slice(3,5)} ${msisdn.slice(5,7)} ${msisdn.slice(7,9)} ${msisdn.slice(9)}`;
+  }
+  const code = COUNTRY_CODE_MAP[country];
+  if (code && msisdn.startsWith(code)) {
+    return `+${code} ${msisdn.slice(code.length)}`;
+  }
+  return `+${msisdn}`;
+}
+
 function PurchasePageContent() {
-  const [areaCode, setAreaCode] = useState("");
   const [numbers, setNumbers] = useState<unknown[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -25,6 +63,11 @@ function PurchasePageContent() {
   const [mode, setMode] = useState<'new' | 'existing'>('new');
   const [availableNumbers, setAvailableNumbers] = useState<AvailableNumber[]>([]);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [country, setCountry] = useState('US');
+  const [type, setType] = useState('any');
+  const [features, setFeatures] = useState(['SMS', 'VOICE', 'MMS']);
+  const [numberPattern, setNumberPattern] = useState('');
+  const [matchType, setMatchType] = useState('contains');
 
   const searchParams = useSearchParams();
   const workspaceIdParam = searchParams.get("workspace_id");
@@ -44,18 +87,43 @@ function PurchasePageContent() {
     setNumbers([]);
     setLoading(true);
     setStep(1);
-    const res = await fetch("/api/twilio-purchase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ search: areaCode }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (data.numbers && data.numbers.length > 0) {
-      setNumbers(data.numbers);
-      setStep(2);
-    } else {
-      setError(data.error || "No available numbers found for that area code. Please try a different one.");
+    try {
+      const res = await fetch("/api/vonage-purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pattern: numberPattern, searchPattern: matchType, country, type, features }),
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Server error: Could not parse response.");
+        setLoading(false);
+        setStep(0);
+        return;
+      }
+      if (!res.ok) {
+        setError(data.error || "Server error");
+        setLoading(false);
+        setStep(0);
+        return;
+      }
+      if (Array.isArray(data.numbers)) {
+        setNumbers(data.numbers);
+        setStep(2);
+      } else if (data.error) {
+        const errorMsg = typeof data.error === 'string'
+          ? data.error
+          : data.error['error-code-label'] || JSON.stringify(data.error);
+        setError(errorMsg);
+        setStep(0);
+      } else {
+        setError("No available numbers found for that area code. Please try a different one.");
+        setStep(0);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error or server is down.");
+      setLoading(false);
       setStep(0);
     }
   };
@@ -66,23 +134,42 @@ function PurchasePageContent() {
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
-    const res = await fetch("/api/twilio-purchase", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ buy: number, user_id, workspace_id: workspaceIdParam }),
-    });
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(error);
-    }
-    const data = await res.json();
-    setBuying(null);
-    if (data.purchased) {
-      setMessage(`Purchased: ${data.purchased.phoneNumber}`);
-      setNumbers([]);
-      setStep(3);
-    } else {
-      setError(data.error || "Purchase failed");
+    try {
+      const res = await fetch("/api/vonage-purchase", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ msisdn: number, user_id, workspace_id: workspaceIdParam, country }),
+      });
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        setError("Server error: Could not parse response.");
+        setBuying(null);
+        return;
+      }
+      if (!res.ok) {
+        let errorMsg = "Server error";
+        if (data.error) {
+          if (typeof data.error === "string") errorMsg = data.error;
+          else if (typeof data.error === "object" && data.error["error-code-label"]) errorMsg = data.error["error-code-label"];
+          else errorMsg = JSON.stringify(data.error);
+        }
+        setError(errorMsg);
+        setBuying(null);
+        return;
+      }
+      setBuying(null);
+      if (data.success) {
+        setMessage("Number purchased successfully!");
+        setNumbers([]);
+        setStep(3);
+      } else {
+        setError(data.error || "Purchase failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Network error or server is down.");
+      setBuying(null);
     }
   };
 
@@ -136,52 +223,121 @@ function PurchasePageContent() {
                 <PhoneIcon fontSize="inherit" />
               </Box>
               <Typography variant="h4" fontWeight={800} mb={1}>
-                Purchase a Twilio Number
+                Purchase a Vonage Number
               </Typography>
               <Typography color="text.secondary" mb={4} sx={{ fontSize: 18 }}>
                 Search and instantly buy a local or toll-free number.
               </Typography>
               {step === 0 && (
-                <form onSubmit={handleSearch}>
-                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" justifyContent="center" mb={3}>
-                    <TextField
-                      label="Area Code (US)"
-                      value={areaCode}
-                      onChange={e => setAreaCode(e.target.value)}
-                      inputProps={{ maxLength: 3 }}
-                      required
-                      placeholder="e.g. 815"
-                      size="medium"
-                      sx={{ width: 160, bgcolor: '#fff', borderRadius: 2 }}
-                    />
-                    <Button type="submit" variant="contained" startIcon={<PhoneIcon />} disabled={loading} sx={{ fontWeight: 700, px: 4, py: 1.5, borderRadius: 2 }}>
-                      {loading ? <CircularProgress size={20} color="inherit" /> : "Search"}
-                    </Button>
-                  </Stack>
-                </form>
+                <Paper elevation={3} sx={{ p: 4, borderRadius: 3, mb: 4, maxWidth: 400, mx: 'auto' }}>
+                  <form onSubmit={handleSearch}>
+                    <Stack spacing={3}>
+                      <FormControl fullWidth>
+                        <InputLabel>Country</InputLabel>
+                        <Select value={country} label="Country" onChange={e => setCountry(e.target.value)}>
+                          {COUNTRY_OPTIONS.map(opt => (
+                            <MenuItem key={opt.code} value={opt.code}>{opt.label}</MenuItem>
+                          ))}
+                        </Select>
+                        <Typography variant="caption" color="text.secondary">Select the country for your number.</Typography>
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <InputLabel>Type</InputLabel>
+                        <Select value={type} label="Type" onChange={e => setType(e.target.value)}>
+                          {TYPE_OPTIONS.map(opt => (
+                            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                          ))}
+                        </Select>
+                        <Typography variant="caption" color="text.secondary">Choose the type of number.</Typography>
+                      </FormControl>
+                      <FormControl fullWidth>
+                        <InputLabel>Features</InputLabel>
+                        <Select
+                          multiple
+                          value={features}
+                          onChange={e => setFeatures(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                          input={<OutlinedInput label="Features" />}
+                          renderValue={selected => (
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                              {(selected as string[]).map(value => (
+                                <Chip key={value} label={FEATURE_OPTIONS.find(opt => opt.value === value)?.label || value} />
+                              ))}
+                            </Box>
+                          )}
+                        >
+                          {FEATURE_OPTIONS.map(opt => (
+                            <MenuItem key={opt.value} value={opt.value}>
+                              <Checkbox checked={features.indexOf(opt.value) > -1} />
+                              <ListItemText primary={opt.label} />
+                            </MenuItem>
+                          ))}
+                        </Select>
+                        <Typography variant="caption" color="text.secondary">Select one or more features.</Typography>
+                      </FormControl>
+                      <FormControl sx={{ minWidth: 120 }}>
+                        <InputLabel>Number</InputLabel>
+                        <Select value={matchType} label="Number" onChange={e => setMatchType(e.target.value)}>
+                          {MATCH_TYPE_OPTIONS.map(opt => (
+                            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      <TextField
+                        label="Number"
+                        value={numberPattern}
+                        onChange={e => setNumberPattern(e.target.value)}
+                        sx={{ minWidth: 120 }}
+                      />
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        startIcon={<PhoneIcon />}
+                        disabled={loading}
+                        fullWidth
+                        sx={{ fontWeight: 700, py: 1.5, borderRadius: 2, fontSize: 18 }}
+                      >
+                        {loading ? <CircularProgress size={20} color="inherit" /> : "Search"}
+                      </Button>
+                    </Stack>
+                  </form>
+                </Paper>
               )}
               {step === 2 && numbers.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle1" fontWeight={600} mb={2}>Available Numbers:</Typography>
                   <List sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                    {numbers.map((num) => {
-                      const n = num as { phoneNumber: string };
+                    {numbers.map((n: unknown, idx) => {
+                      const num = n as { msisdn?: string; phoneNumber?: string; features?: string[] | string };
+                      const displayNumber = num.msisdn || num.phoneNumber || '';
                       return (
-                        <ListItem key={n.phoneNumber} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
-                          <Typography fontFamily="monospace" fontSize={18}>{n.phoneNumber}</Typography>
+                        <ListItem key={`${displayNumber}-${idx}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
+                          <Box>
+                            <Typography fontFamily="monospace" fontSize={18}>{formatFriendlyName(displayNumber, country)}</Typography>
+                            <Typography fontSize={14} color="text.secondary">{Array.isArray(num.features) ? num.features.join(' / ') : num.features}</Typography>
+                          </Box>
                           <Button
                             variant="contained"
-                            color={buying === n.phoneNumber ? "inherit" : "primary"}
-                            onClick={() => handleBuy(n.phoneNumber)}
-                            disabled={buying === n.phoneNumber}
-                            sx={{ ml: 2, fontWeight: 700 }}
+                            size="small"
+                            onClick={() => handleBuy(displayNumber)}
+                            disabled={buying === displayNumber}
+                            sx={{ minWidth: 60, fontWeight: 600, px: 2, py: 0.5, fontSize: 14 }}
                           >
-                            {buying === n.phoneNumber ? <CircularProgress size={20} color="inherit" /> : "Buy"}
+                            {buying === displayNumber ? <CircularProgress size={18} /> : 'BUY'}
                           </Button>
                         </ListItem>
                       );
                     })}
                   </List>
+                </Box>
+              )}
+              {step === 2 && numbers.length === 0 && (
+                <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <Alert severity="info">
+                    No numbers available for your search. Please try different criteria.
+                  </Alert>
+                  <Button variant="contained" color="primary" onClick={() => { setStep(0); setLoading(false); }} sx={{ mt: 1 }}>
+                    Try Again
+                  </Button>
                 </Box>
               )}
             </>
@@ -201,12 +357,12 @@ function PurchasePageContent() {
                 <Alert severity="info">No available numbers found for this workspace.</Alert>
               ) : (
                 <List sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                  {availableNumbers.map((num) => (
+                  {availableNumbers.map((num, idx) => (
                     <ListItem
-                      key={num.sid || num.phoneNumber}
+                      key={num.phoneNumber || num.sid || idx}
                       sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}
                     >
-                      <Typography fontFamily="monospace" fontSize={18}>{num.phoneNumber}</Typography>
+                      <Typography fontFamily="monospace" fontSize={18}>{formatFriendlyName(num.phoneNumber, country)}</Typography>
                       <Button
                         variant="contained"
                         color={assigning === num.phoneNumber ? "inherit" : "primary"}

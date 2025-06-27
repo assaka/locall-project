@@ -20,16 +20,18 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.50.0",
+    "@vonage/server-sdk": "^3.21.2",
+    "jsonwebtoken": "^9.0.2",
     "next": "15.3.4",
     "nodemailer": "^7.0.3",
     "prisma": "^6.10.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "recharts": "^3.0.0",
-    "twilio": "^5.7.1"
+    "recharts": "^3.0.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^19",

@@ -64,7 +64,6 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
     if (open && workspaceId) {
       fetchMembers();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, workspaceId]);
 
   const handleInvite = async () => {
@@ -113,9 +112,9 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
             {members.length === 0 ? (
               <Typography color="text.secondary">No members found.</Typography>
             ) : (
-              members.map((m, idx) => {
+              Array.from(new Map(members.map(m => [m.user_id, m])).values()).map((m, idx, arr) => {
                 const isSelf = m.user_id === currentUserId;
-                const isOnlyAdmin = m.role === 'admin' && members.filter(mem => mem.role === 'admin').length === 1;
+                const isOnlyAdmin = m.role === 'admin' && arr.filter(mem => mem.role === 'admin').length === 1;
                 return (
                   <React.Fragment key={m.user_id}>
                     <ListItem
@@ -149,7 +148,7 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
                         )}
                       </Box>
                     </ListItem>
-                    {idx < members.length - 1 && <Divider />}
+                    {idx < arr.length - 1 && <Divider />}
                   </React.Fragment>
                 );
               })

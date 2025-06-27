@@ -1,13 +1,29 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/app/utils/supabaseClient';
-import twilio from 'twilio';
+import axios from 'axios';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = twilio(accountSid, authToken);
+interface VonageNumber {
+  msisdn: string;
+  [key: string]: unknown;
+}
+
+function getVonageNumbers(): Promise<VonageNumber[]> {
+  return axios.get('https://rest.nexmo.com/account/numbers', {
+    params: {
+      api_key: process.env.VONAGE_API_KEY,
+      api_secret: process.env.VONAGE_API_SECRET,
+    },
+  }).then(res => res.data.numbers || []);
+}
 
 export async function GET() {
-  const twilioNumbers = await client.incomingPhoneNumbers.list();
+  let vonageNumbers: VonageNumber[] = [];
+  try {
+    vonageNumbers = await getVonageNumbers();
+  } catch (err: unknown) {
+    const error = err as { response?: { data?: { error_text?: string } }, message?: string };
+    return NextResponse.json({ error: 'Failed to fetch numbers from Vonage: ' + (error.response?.data?.error_text || error.message) }, { status: 500 });
+  }
 
   const { data: assignedNumbers, error } = await supabase
     .from('numbers')
@@ -23,9 +39,12 @@ export async function GET() {
       .map(n => n.phone_number)
   );
 
-  const availableNumbers = twilioNumbers.filter(
-    n => !assignedSet.has(n.phoneNumber)
-  );
+  const availableNumbers = vonageNumbers.filter(
+    n => !assignedSet.has(n.msisdn)
+  ).map(n => ({
+    ...n,
+    phoneNumber: n.msisdn,
+  }));
 
   return NextResponse.json({ numbers: availableNumbers });
 }

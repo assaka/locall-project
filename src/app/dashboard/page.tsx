@@ -239,7 +239,6 @@ export default function DashboardPage() {
     } else {
         setInviteStatus('sent');
         setInviteError('');
-        console.log('Invite sent result:', data.result);
       }
     } catch (err) {
       setInviteStatus('error');
@@ -718,9 +717,12 @@ export default function DashboardPage() {
                         <Typography color="text.secondary">No members found.</Typography>
                       ) : (
                         <Box>
-                            {members.map((m, idx) => (
-                              <Box key={m.user_id} display="flex" alignItems="center" gap={2} mb={1}>
-                                <Typography fontWeight={600}>{idx + 1}. {m.users?.name || m.users?.email || m.user_id}</Typography>
+                          {(selectedWorkspace === 'all'
+                            ? members.filter((m, idx, arr) => arr.findIndex(x => x.user_id === m.user_id) === idx)
+                            : members
+                          ).map((m, idx) => (
+                            <Box key={m.user_id} display="flex" alignItems="center" gap={2} mb={1}>
+                              <Typography fontWeight={600}>{idx + 1}. {m.users?.name || m.users?.email || m.user_id}</Typography>
                               <Chip label={m.role} color={m.role === 'admin' ? 'primary' : 'default'} size="small" />
                             </Box>
                           ))}

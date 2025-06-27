@@ -24,14 +24,14 @@ function CallPageContent() {
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
     const visitor_id = getVisitorId();
-    const res = await fetch("/api/twilio-call", {
+    const res = await fetch("/api/vonage-call", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ from: fromParam, to, user_id, workspace_id: workspaceIdParam, visitor_id }),
     });
     const data = await res.json();
     setLoading(false);
-    if (data.sid) setMessage(`Call initiated! SID: ${data.sid}`);
+    if (data.uuid) setMessage(`Call initiated! UUID: ${data.uuid}`);
     else setError(data.error || "Call failed");
   };
 
@@ -49,12 +49,12 @@ function CallPageContent() {
             Initiate a Call
           </Typography>
           <Typography color="text.secondary" mb={4} sx={{ fontSize: 18 }}>
-            Place a call from your Twilio number to any destination.
+            Place a call from your Vonage number to any destination.
           </Typography>
           <form onSubmit={handleCall}>
             <Stack spacing={3} mb={2}>
               <TextField
-                label="From (Twilio Number)"
+                label="From (Vonage Number)"
                 value={fromParam || ""}
                 disabled
                 fullWidth
