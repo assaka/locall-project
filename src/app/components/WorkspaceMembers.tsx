@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/app/utils/supabaseClient";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
@@ -36,12 +36,12 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
 
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     setLoading(true);
     const result = await supabase.from('workspace_members').select('id, role, user_id, users:users!workspace_members_user_id_fkey(name, email)').eq('workspace_id', workspaceId);
     setMembers((result.data ?? []) as WorkspaceMember[]);
     setLoading(false);
-  };
+  }, [workspaceId]);
 
   useEffect(() => {
     async function fetchUserRole() {
@@ -64,7 +64,7 @@ export default function WorkspaceMembers({ workspaceId, open, setOpen }: { works
     if (open && workspaceId) {
       fetchMembers();
     }
-  }, [open, workspaceId]);
+  }, [open, workspaceId, fetchMembers]);
 
   const handleInvite = async () => {
     setInviteStatus(null);
