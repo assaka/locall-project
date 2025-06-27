@@ -12,6 +12,19 @@ const TYPE_MAP: Record<string, string> = {
   'any': 'any',
 };
 
+interface VonageNumber {
+  msisdn?: string;
+  phoneNumber?: string;
+  features?: string[] | string;
+  cost?: string;
+  monthlyCost?: string;
+  currency?: string;
+  setupCost?: string;
+  setup_fee?: string;
+  initialPrice?: string;
+  [key: string]: unknown;
+}
+
 function formatFriendlyName(msisdn: string, country: string) {
   if (!msisdn) return '';
   if ((country === 'US' || country === 'CA') && msisdn.length === 11 && msisdn.startsWith('1')) {
@@ -94,11 +107,12 @@ export async function POST(request: Request) {
     if (apiType !== 'any') params.type = apiType;
     if (features && features.length) params.features = Array.isArray(features) ? features.join(',') : features;
     const response = await axios.get('https://rest.nexmo.com/number/search', { params });
-    const numbers = (response.data.numbers || []).map((n: any) => ({
+    const numbers = (response.data.numbers || []).map((n: VonageNumber) => ({
       ...n,
       cost: n.cost || n.monthlyCost || '',
       monthlyCost: n.monthlyCost || n.cost || '',
-      currency: n.currency || '€',
+      currency: n.currency || '$',
+      setupCost: n.setupCost || n.setup_fee || '',
     }));
     return NextResponse.json({ numbers });
   } catch (error: unknown) {
