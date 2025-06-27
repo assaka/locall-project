@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       ...n,
       cost: n.cost || n.monthlyCost || '',
       monthlyCost: n.monthlyCost || n.cost || '',
-      currency: n.currency || '$',
+      currency: n.currency || '€',
       setupCost: n.setupCost || n.setup_fee || '',
     }));
     return NextResponse.json({ numbers });
