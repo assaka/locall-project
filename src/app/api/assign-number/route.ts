@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/app/utils/supabaseClient';
-import twilio from 'twilio';
+import axios from 'axios';
 
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = twilio(accountSid, authToken);
+interface VonageNumber {
+  msisdn: string;
+  [key: string]: unknown;
+}
 
 export async function POST(request: Request) {
   const { phone_number, user_id, workspace_id } = await request.json();
@@ -27,20 +28,32 @@ export async function POST(request: Request) {
   }
 
   if (!existing) {
-    const twilioNumbers = await client.incomingPhoneNumbers.list();
-    const twilioNum = twilioNumbers.find(n => n.phoneNumber === phone_number);
-    if (!twilioNum) {
-      return NextResponse.json({ error: 'Number not found in Twilio account' }, { status: 404 });
+    let vonageNumbers: VonageNumber[];
+    try {
+      const response = await axios.get('https://rest.nexmo.com/account/numbers', {
+        params: {
+          api_key: process.env.VONAGE_API_KEY,
+          api_secret: process.env.VONAGE_API_SECRET,
+        },
+      });
+      vonageNumbers = response.data.numbers || [];
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error_text?: string } }, message?: string };
+      return NextResponse.json({ error: 'Failed to fetch numbers from Vonage: ' + (error.response?.data?.error_text || error.message) }, { status: 500 });
+    }
+    const vonageNum = vonageNumbers.find((n: VonageNumber) => n.msisdn === phone_number);
+    if (!vonageNum) {
+      return NextResponse.json({ error: 'Number not found in Vonage account' }, { status: 404 });
     }
     const { error: insertError } = await supabase
       .from('numbers')
       .insert([{
-        twilio_sid: twilioNum.sid,
-        phone_number: twilioNum.phoneNumber,
+        vonage_number_id: vonageNum.msisdn,
+        phone_number: vonageNum.msisdn,
         user_id,
         workspace_id,
         purchased_at: new Date().toISOString(),
-        friendly_name: twilioNum.friendlyName,
+        friendly_name: vonageNum.friendly_name || null,
         is_active: true
       }]);
     if (insertError) {
