@@ -72,6 +72,28 @@ export async function POST(request: Request) {
       if (!workspace_id || !user_id) {
         return NextResponse.json({ error: 'workspace_id and user_id are required' }, { status: 400 });
       }
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('balance')
+        .eq('id', user_id)
+        .single();
+      if (userError || !userData) {
+        return NextResponse.json({ error: 'Could not fetch user balance' }, { status: 500 });
+      }
+      const numberCost = parseFloat(body.cost || '0');
+      if (!numberCost || isNaN(numberCost)) {
+        return NextResponse.json({ error: 'Number cost is required for purchase' }, { status: 400 });
+      }
+      if (userData.balance < numberCost) {
+        return NextResponse.json({ error: 'Insufficient balance. Please top up your account.' }, { status: 402 });
+      }
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ balance: userData.balance - numberCost })
+        .eq('id', user_id);
+      if (updateError) {
+        return NextResponse.json({ error: 'Failed to deduct balance' }, { status: 500 });
+      }
       const params = {
         api_key: VONAGE_API_KEY,
         api_secret: VONAGE_API_SECRET,
@@ -93,6 +115,9 @@ export async function POST(request: Request) {
         }]);
       if (dbError) {
         return NextResponse.json({ error: dbError.message }, { status: 500 });
+      }
+      if (userData.balance - numberCost < 5) {
+        console.log(`User ${user_id} balance is low: ${userData.balance - numberCost}`);
       }
       return NextResponse.json({ success: true, data: response.data });
     }

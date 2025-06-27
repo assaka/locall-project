@@ -54,7 +54,7 @@ function formatFriendlyName(msisdn: string, country: string) {
 }
 
 function PurchasePageContent() {
-  const [numbers, setNumbers] = useState<unknown[]>([]);
+  const [numbers, setNumbers] = useState<(AvailableNumber & { msisdn?: string; cost?: string; monthlyCost?: string })[]>([]);
   const [buying, setBuying] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -68,9 +68,33 @@ function PurchasePageContent() {
   const [features, setFeatures] = useState(['SMS', 'VOICE', 'MMS']);
   const [numberPattern, setNumberPattern] = useState('');
   const [matchType, setMatchType] = useState('contains');
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   const searchParams = useSearchParams();
   const workspaceIdParam = searchParams.get("workspace_id");
+
+  // Fetch user balance
+  const fetchBalance = async () => {
+    setBalanceLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setBalance(null);
+      setBalanceLoading(false);
+      return;
+    }
+    const { data } = await supabase
+      .from('users')
+      .select('balance')
+      .eq('id', user.id)
+      .single();
+    setBalance(data?.balance ?? null);
+    setBalanceLoading(false);
+  };
+
+  useEffect(() => {
+    fetchBalance();
+  }, []);
 
   useEffect(() => {
     if (mode === 'existing' && workspaceIdParam) {
@@ -121,7 +145,7 @@ function PurchasePageContent() {
         setError("No available numbers found for that area code. Please try a different one.");
         setStep(0);
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error or server is down.");
       setLoading(false);
       setStep(0);
@@ -134,11 +158,13 @@ function PurchasePageContent() {
     setError("");
     const { data: { user } } = await supabase.auth.getUser();
     const user_id = user?.id;
+    const numObj = numbers.find((n) => n.msisdn === number || n.phoneNumber === number);
+    const cost = numObj?.cost || numObj?.monthlyCost || '';
     try {
       const res = await fetch("/api/vonage-purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ msisdn: number, user_id, workspace_id: workspaceIdParam, country }),
+        body: JSON.stringify({ msisdn: number, user_id, workspace_id: workspaceIdParam, country, cost }),
       });
       let data;
       try {
@@ -164,10 +190,11 @@ function PurchasePageContent() {
         setMessage("Number purchased successfully!");
         setNumbers([]);
         setStep(3);
+        fetchBalance(); // Refresh balance after purchase
       } else {
         setError(data.error || "Purchase failed");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Network error or server is down.");
       setBuying(null);
     }
@@ -199,6 +226,19 @@ function PurchasePageContent() {
     }
   };
 
+  // Top up handler
+  const handleTopUp = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const res = await fetch('/api/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    const { url } = await res.json();
+    window.location.href = url;
+  };
+
   return (
     <Box sx={{ bgcolor: '#f7faff', minHeight: '100vh', py: 6 }}>
       <Container maxWidth="sm">
@@ -228,6 +268,25 @@ function PurchasePageContent() {
               <Typography color="text.secondary" mb={4} sx={{ fontSize: 18 }}>
                 Search and instantly buy a local or toll-free number.
               </Typography>
+              <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Typography fontWeight={700} fontSize={18}>
+                  {balanceLoading ? 'Loading balance...' : balance !== null ? `Your Balance: €${balance.toFixed(2)}` : 'Balance unavailable'}
+                </Typography>
+                {balance !== null && balance < 5 && (
+                  <Alert severity="warning" sx={{ py: 0, px: 2, fontSize: 14 }}>
+                    Low balance! Please top up to avoid service interruption.
+                  </Alert>
+                )}
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={handleTopUp}
+                  sx={{ ml: 2, fontWeight: 700 }}
+                >
+                  Top Up
+                </Button>
+              </Box>
               {step === 0 && (
                 <Paper elevation={3} sx={{ p: 4, borderRadius: 3, mb: 4, maxWidth: 400, mx: 'auto' }}>
                   <form onSubmit={handleSearch}>
