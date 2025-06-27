@@ -94,7 +94,13 @@ export async function POST(request: Request) {
     if (apiType !== 'any') params.type = apiType;
     if (features && features.length) params.features = Array.isArray(features) ? features.join(',') : features;
     const response = await axios.get('https://rest.nexmo.com/number/search', { params });
-    return NextResponse.json({ numbers: response.data.numbers || [] });
+    const numbers = (response.data.numbers || []).map((n: any) => ({
+      ...n,
+      cost: n.cost || n.monthlyCost || '',
+      monthlyCost: n.monthlyCost || n.cost || '',
+      currency: n.currency || '€',
+    }));
+    return NextResponse.json({ numbers });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : error }, { status: 500 });
   }

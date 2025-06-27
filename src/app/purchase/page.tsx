@@ -305,24 +305,89 @@ function PurchasePageContent() {
               {step === 2 && numbers.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle1" fontWeight={600} mb={2}>Available Numbers:</Typography>
-                  <List sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+                  <List
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+                      gap: 4,
+                      px: 1,
+                    }}
+                  >
                     {numbers.map((n: unknown, idx) => {
-                      const num = n as { msisdn?: string; phoneNumber?: string; features?: string[] | string };
+                      const num = n as {
+                        msisdn?: string;
+                        phoneNumber?: string;
+                        features?: string[] | string;
+                        cost?: string;
+                        monthlyCost?: string;
+                        currency?: string;
+                        initialPrice?: string;
+                      };
                       const displayNumber = num.msisdn || num.phoneNumber || '';
+                      const monthly = num.monthlyCost || num.cost || '';
+                      const setup = num.initialPrice || '';
+                      const currency = num.currency || '€';
                       return (
-                        <ListItem key={`${displayNumber}-${idx}`} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: '#e8f0fe', borderRadius: 2, mb: 1, px: 2, boxShadow: 1, border: '2px solid transparent', transition: 'border 0.2s', '&:hover': { borderColor: 'primary.main', bgcolor: '#e3f2fd' } }}>
-                          <Box>
-                            <Typography fontFamily="monospace" fontSize={18}>{formatFriendlyName(displayNumber, country)}</Typography>
-                            <Typography fontSize={14} color="text.secondary">{Array.isArray(num.features) ? num.features.join(' / ') : num.features}</Typography>
+                        <ListItem
+                          key={`${displayNumber}-${idx}`}
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'stretch',
+                            bgcolor: '#fff',
+                            borderRadius: 4,
+                            boxShadow: 3,
+                            p: 3,
+                            minHeight: 220,
+                            maxWidth: 400,
+                            mx: 'auto',
+                            position: 'relative',
+                          }}
+                        >
+                          <Typography fontFamily="monospace" fontWeight={700} fontSize={22} mb={1}>
+                            {formatFriendlyName(displayNumber, country)}
+                          </Typography>
+                          <Typography fontSize={16} color="text.secondary" mb={2}>
+                            {Array.isArray(num.features) ? num.features.join(' / ') : num.features}
+                          </Typography>
+                          <Box
+                            sx={{
+                              background: '#f7faff',
+                              borderRadius: 2,
+                              p: 2,
+                              mb: 2,
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 1,
+                            }}
+                          >
+                            {setup && (
+                              <Typography fontSize={15} color="secondary">
+                                <b>Initial set up fee:</b> {currency}{setup}
+                              </Typography>
+                            )}
+                            {monthly && (
+                              <Typography fontSize={15} color="primary">
+                                <b>Monthly cost:</b> {currency}{monthly}
+                              </Typography>
+                            )}
                           </Box>
+                          <Box sx={{ flexGrow: 1 }} />
                           <Button
                             variant="contained"
-                            size="small"
+                            size="large"
                             onClick={() => handleBuy(displayNumber)}
                             disabled={buying === displayNumber}
-                            sx={{ minWidth: 60, fontWeight: 600, px: 2, py: 0.5, fontSize: 14 }}
+                            sx={{
+                              fontWeight: 700,
+                              fontSize: 16,
+                              borderRadius: 2,
+                              boxShadow: 1,
+                              minWidth: 120,
+                              mt: 2,
+                            }}
                           >
-                            {buying === displayNumber ? <CircularProgress size={18} /> : 'BUY'}
+                            {buying === displayNumber ? <CircularProgress size={20} color="inherit" /> : 'BUY'}
                           </Button>
                         </ListItem>
                       );
